@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant de référencement — Doctrine</title>
+<style>
+  :root{
+    /* Gamme inspirée de la charte "Évaluer l'analyse juridique de l'IA" :
+       greige clair, encre charbon, accent tan/camel */
+    --bord:#a98253;--bord-dark:#8a6a41;--bord-light:#c2a173;
+    --bord-pale:#f0ebe3;--bord-pale2:#f4f2ee;
+    --ink:#2b2926;--muted:#6f6a62;--line:#ddd6ca;--ok:#5b7c53;--amber:#8a5a00;
+    --charcoal:#2f2c28;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:var(--bord-pale2);color:var(--ink);line-height:1.5;}
+  header{background:linear-gradient(115deg,var(--charcoal) 0%,var(--charcoal) 58%,var(--bord-dark) 100%);color:#f4f2ee;padding:28px 24px 22px;}
+  header h1{margin:0 0 6px;font-size:22px;font-weight:700;letter-spacing:.2px;}
+  header p{margin:0;font-size:13.5px;opacity:.92;}
+  header p em{font-style:italic;}
+  header p.credit{margin-top:8px;font-size:12px;opacity:.85;font-style:italic;}
+  .wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px;}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 4px;}
+  .tab{border:1.5px solid var(--line);background:#fff;color:var(--bord-dark);padding:10px 16px;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s;}
+  .tab:hover{border-color:var(--bord-light);}
+  .tab.active{background:var(--bord);color:#fff;border-color:var(--bord);}
+  .subtabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;}
+  .subtab{border:1.5px solid var(--line);background:#fff;color:var(--bord-dark);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;}
+  .subtab:hover{border-color:var(--bord-light);}
+  .subtab.active{background:var(--bord);color:#fff;border-color:var(--bord);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:14px;box-shadow:0 1px 3px rgba(20,120,70,.06);}
+  .intro{font-size:13px;color:var(--muted);margin:-4px 0 16px;}
+  .intro em{font-style:italic;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 5px;color:var(--bord-dark);}
+  .hint{font-weight:400;color:var(--muted);font-size:12px;}
+  select,input[type=text],input[type=date]{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--ink);font-family:inherit;}
+  select:focus,input:focus{outline:none;border-color:var(--bord-light);box-shadow:0 0 0 3px var(--bord-pale);}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:140px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:12px;}
+  .check input{width:auto;}
+  .check label{margin:0;font-weight:500;color:var(--ink);}
+  .radio-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .radio-group label{margin:0;font-weight:500;border:1.5px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--ink);}
+  .radio-group input{width:auto;}
+  .radio-group label.sel{border-color:var(--bord);background:var(--bord-pale);}
+  .actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;}
+  .gen{background:var(--bord);color:#fff;border:none;border-radius:10px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;flex:1;min-width:200px;transition:background .15s;}
+  .gen:hover{background:var(--bord-dark);}
+  .gen.alt{background:var(--charcoal);}
+  .gen.alt:hover{background:#1f1d1a;}
+  .reset{background:#fff;border:1.5px solid var(--line);color:var(--muted);border-radius:10px;padding:13px 18px;font-size:14px;font-weight:600;cursor:pointer;}
+  .reset:hover{border-color:var(--bord-light);color:var(--bord-dark);}
+  .result{margin-top:18px;background:var(--bord-pale);border:1px solid var(--line);border-radius:12px;padding:18px;display:none;}
+  .result.show{display:block;}
+  .result h3{margin:0 0 10px;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--bord-dark);}
+  .ref-out{font-size:16px;background:#fff;border:1px dashed var(--bord-light);border-radius:9px;padding:14px 16px;color:var(--ink);font-family:Georgia,"Times New Roman",serif;}
+  .ref-out em{font-style:italic;}
+  .btns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .btn-copy{background:#fff;border:1.5px solid var(--bord);color:var(--bord-dark);border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .btn-copy:hover{background:var(--bord-pale);}
+  .btn-copy.done{background:var(--ok);border-color:var(--ok);color:#fff;}
+  .err{color:var(--bord);font-size:13px;margin-top:10px;font-weight:600;display:none;}
+  .err.show{display:block;}
+  .sub{font-size:12px;color:var(--muted);margin:2px 0 0;}
+  .suggest{font-size:12.5px;color:var(--ok);margin:6px 0 0;font-weight:600;min-height:16px;}
+  .sect{border-top:1px dashed var(--line);margin-top:18px;padding-top:6px;}
+  .sect-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--bord-light);margin-top:14px;}
+  .note-box{background:var(--bord-pale);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:12.5px;color:var(--bord-dark);margin:14px 0 4px;}
+  .note-box b{color:var(--bord-dark);}
+  footer{text-align:center;font-size:12px;color:var(--muted);padding:20px;font-style:italic;}
+  .warn{background:#fbf2e0;border:1px solid #e6cf9a;border-left:4px solid var(--amber);border-radius:10px;padding:11px 14px;font-size:12px;color:#6b4a00;margin-top:12px;}
+  .warn b{color:#6b4a00;}
+  .warn i{font-style:italic;}
+  code{background:var(--bord-pale);padding:1px 5px;border-radius:4px;font-size:12.5px;color:var(--bord-dark);}
+  .tabpane,.subpane{display:none;}
+  .tabpane.active,.subpane.active{display:block;}
+  #cj-oj .field{display:none;}
+  #cj-oj .field.show{display:block;}
+  /* auteurs */
+  .author-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:8px;flex-wrap:wrap;}
+  .author-row > div{flex:1;min-width:80px;}
+  .author-row .mini{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;display:block;}
+  .btn-rm{flex:0 0 auto;background:#fff;border:1.5px solid #e0b4b4;color:#b23b3b;border-radius:9px;width:40px;height:41px;cursor:pointer;font-size:18px;}
+  .btn-rm:hover{background:#fbeaea;}
+  .btn-add{background:var(--bord-pale);border:1.5px dashed var(--bord);color:var(--bord-dark);padding:8px 14px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;margin-top:4px;}
+  .btn-add:hover{background:#d9efe3;}
+  .wip-card{text-align:center;padding:40px 24px;}
+  .wip-card .big{font-size:40px;margin-bottom:10px;}
+  .wip-card h2{color:var(--bord-dark);margin:0 0 8px;}
+  .wip-card p{color:var(--muted);max-width:440px;margin:0 auto;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Assistant de référencement – Doctrine</h1>
+  <p>Outil d'aide à la rédaction des références — <em>Guide Wolters Kluwer des citations, références et abréviations juridiques</em> (éd. 2017)</p>
+  <p class="credit">Application pensée par Isabelle Lemineur, Maître de conférences en Méthodologie juridique à l'UMons, Maître assistant en Droit à la HE2B et Techno-pédagogue.</p>
+</header>
+
+<div class="wrap">
+  <!-- ONGLETS PRINCIPAUX -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="revue">Revue</button>
+    <button class="tab" data-tab="ouvrage">Ouvrage simple</button>
+    <button class="tab" data-tab="collectif">Ouvrage collectif</button>
+    <button class="tab" data-tab="encyclo">Encyclopédie</button>
+    <button class="tab" data-tab="autres">Autres</button>
+  </div>
+
+  <!-- ===================== REVUE ===================== -->
+  <div class="tabpane active" id="pane-revue">
+    <div class="subtabs" id="revue-subtabs">
+      <button class="subtab active" data-sub="article">Article</button>
+      <button class="subtab" data-sub="comm">Commentaire d'une décision de justice</button>
+    </div>
+
+    <div class="note-box">
+      <b>Prénoms à plusieurs consonnes</b> (Chr., Ph., Fl., Th., Fr., Ch., Cl.…) : saisissez l'initiale telle que vous souhaitez la citer, en restant cohérent dans tout le travail.<br>
+      <b>Noms à particule</b> (de, van, t', Mc…) : utilisez le champ <i>particule</i>. Une particule en minuscules le reste toujours (« van de KERCHOVE ») ; une particule avec majuscule passe en capitales (« De » → « DE »).
+    </div>
+
+    <!-- ARTICLE -->
+    <div class="card subpane active" id="sub-article">
+      <p class="intro">Article publié dans une revue — règle générale n° 225 du Guide.</p>
+
+      <label>Auteur(s) <span class="hint">— dans l'ordre de la page de titre</span></label>
+      <div class="authors" id="auth-article"></div>
+      <button class="btn-add" data-add="auth-article">+ Ajouter un auteur</button>
+
+      <label>Titre de l'article</label>
+      <input type="text" id="article-titre" placeholder="Faillite et transaction : les actionnaires ont-ils leur mot à dire ?">
+
+      <div id="article-revue-block"></div>
+
+      <div class="actions">
+        <button class="gen" data-gen="article" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="article" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="sub-article">↻ Effacer</button>
+      </div>
+      <p class="err" id="article-err"></p>
+      <div class="result" id="article-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="article-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="article-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="article-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+
+    <!-- COMMENTAIRE -->
+    <div class="card subpane" id="sub-comm">
+      <p class="intro">Commentaire d'une décision de justice (note d'arrêt ou observations) — n° 234. La référence fait précéder une référence de jurisprudence par les éléments d'un article de revue, reliés par « note sous » / « obs. sous ».</p>
+
+      <label>Auteur(s) <span class="hint">— « X » si anonyme ; initiales seules si l'auteur ne se signe que par elles</span></label>
+      <div class="authors" id="auth-comm"></div>
+      <button class="btn-add" data-add="auth-comm">+ Ajouter un auteur</button>
+
+      <label>Titre de la note <span class="hint">(laisser vide si la note n'a pas de titre)</span></label>
+      <input type="text" id="comm-titre" placeholder="Détricotage constitutionnel du droit de la filiation…">
+
+      <div class="row">
+        <div style="flex:0 0 160px"><label>Expression</label><select id="comm-type"><option value="note sous">note sous</option><option value="obs. sous">obs. sous</option></select></div>
+        <div><label>Niveau de la juridiction</label>
+          <select id="comm-juris">
+            <option value="oj">Ordre judiciaire (belge)</option>
+            <option value="cc">Cour constitutionnelle</option>
+            <option value="ce">Conseil d'État</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ===== DÉCISION COMMENTÉE : critères de jurisprudence ===== -->
+      <div class="sect">
+        <div class="sect-title">Décision commentée</div>
+
+        <!-- Ordre judiciaire -->
+        <div id="cj-oj">
+          <label>Type de juridiction</label>
+          <select id="cj-oj-type">
+            <option value="cassation">Cour de cassation — Cass.</option>
+            <option value="appel">Cour d'appel (ville seule)</option>
+            <option value="ctrav">Cour du travail — C. trav.</option>
+            <option value="assises">Cour d'assises — Cour ass.</option>
+            <option value="civ">Tribunal de première instance — section civile — Civ.</option>
+            <option value="corr">Tribunal de première instance — section correctionnelle — Corr.</option>
+            <option value="tribfam">Tribunal de la famille — Trib. fam.</option>
+            <option value="tribjeun">Tribunal de la jeunesse — Trib. jeun.</option>
+            <option value="tap">Tribunal de l'application des peines — T.A.P.</option>
+            <option value="tribentr">Tribunal de l'entreprise — Trib. entr.</option>
+            <option value="comm">Tribunal de commerce — Comm.</option>
+            <option value="tribtrav">Tribunal du travail — Trib. trav.</option>
+            <option value="pol">Tribunal de police — Pol.</option>
+            <option value="jp">Justice de paix — J.P.</option>
+            <option value="tribarr">Tribunal d'arrondissement — Trib. arr.</option>
+          </select>
+          <div class="field" id="cj-oj-ville-f">
+            <label id="cj-oj-ville-l">Ville / siège <span class="hint">(en toutes lettres)</span></label>
+            <input type="text" id="cj-oj-ville" placeholder="ex. Mons, Liège, Bruxelles…">
+            <p class="sub" id="cj-oj-ville-sub"></p>
+          </div>
+          <div class="field" id="cj-oj-lang-f">
+            <label>Langue (Bruxelles) <span class="hint">— depuis le 31 mars 2014</span></label>
+            <select id="cj-oj-lang"><option value="">(aucune / non Bruxelles)</option><option value="fr.">fr. (francophone)</option><option value="néerl.">néerl. (néerlandophone)</option></select>
+          </div>
+          <div class="row">
+            <div class="field" id="cj-oj-div-f"><label>Division territoriale <span class="hint">(préfixe « div. »)</span></label><input type="text" id="cj-oj-div" placeholder="ex. Bruges"></div>
+            <div class="field" id="cj-oj-cant-f"><label>N° de canton <span class="hint">(justice de paix)</span></label><input type="text" id="cj-oj-cant" placeholder="ex. 2e cant."></div>
+          </div>
+          <div class="field" id="cj-oj-siege-f">
+            <label>Siège <span class="hint">(cantons à plusieurs sièges — « siège de … »)</span></label>
+            <input type="text" id="cj-oj-siege" placeholder="ex. Audenarde, Huy, Poperinge">
+          </div>
+          <label>Chambre <span class="hint">(n° ou nature ; un chiffre seul suffit : « 2 » → 2ᵉ ch.)</span></label>
+          <input type="text" id="cj-oj-ch" placeholder="ex. 2, référé, saisies, jeunesse, ch. du conseil…">
+          <p class="suggest" id="cj-oj-ch-sug"></p>
+          <label>Date du prononcé</label>
+          <input type="date" id="cj-oj-date">
+          <div class="check"><input type="checkbox" id="cj-oj-somm"><label for="cj-oj-somm">Décision citée en sommaire — ajoute <code>(somm.)</code></label></div>
+          <div class="sect-title" style="margin-top:14px">Ministère public <span class="hint" style="text-transform:none">(facultatif)</span></div>
+          <div class="row">
+            <div><label>Nature</label><select id="cj-oj-mp-nat"><option value="">(aucune)</option><option value="concl.">concl.</option><option value="avis">avis</option><option value="rapp.">rapp.</option></select></div>
+            <div><label>Fonction</label><select id="cj-oj-mp-fct"><option value="">(aucune)</option><option value="Proc. gén.">Proc. gén.</option><option value="prem. av. gén.">prem. av. gén.</option><option value="Av. gén.">Av. gén.</option><option value="Aud.">Aud.</option><option value="Aud. gén.">Aud. gén.</option><option value="subst. proc. Roi">subst. proc. Roi</option><option value="M.P.">M.P.</option></select></div>
+            <div><label>Nom / initiales</label><input type="text" id="cj-oj-mp-nom" placeholder="ex. A. Henkes"></div>
+          </div>
+        </div>
+
+        <!-- Cour constitutionnelle -->
+        <div id="cj-cc" style="display:none">
+          <label>Dénomination</label>
+          <select id="cj-cc-denom"><option value="C.C.">C.C. — Cour constitutionnelle (depuis le 7 mai 2007)</option><option value="C.A.">C.A. — Cour d'arbitrage (avant le 7 mai 2007)</option></select>
+          <label>Date de l'arrêt</label>
+          <input type="date" id="cj-cc-date">
+          <label>N° d'arrêt <span class="hint">(« /année » ajouté d'office si omis)</span></label>
+          <input type="text" id="cj-cc-num" placeholder="ex. 112/2012  ou  112">
+          <label>Considérant / passage précis <span class="hint">(facultatif)</span></label>
+          <input type="text" id="cj-cc-pass" placeholder="ex. B.2.2">
+        </div>
+
+        <!-- Conseil d'État -->
+        <div id="cj-ce" style="display:none">
+          <label>Chambre <span class="hint">(entre parenthèses ; facultatif — « 11 » → 11ᵉ ch.)</span></label>
+          <input type="text" id="cj-ce-ch" placeholder="ex. 11e ch. réf., 11, ass. gén.">
+          <p class="suggest" id="cj-ce-ch-sug"></p>
+          <label>Date de l'arrêt</label>
+          <input type="date" id="cj-ce-date">
+          <label>N° d'arrêt <span class="hint">(point de milliers ajouté d'office si omis)</span></label>
+          <input type="text" id="cj-ce-num" placeholder="ex. 230.432  ou  230432">
+          <label>Requérant(s) <span class="hint">(noms séparés par une virgule)</span></label>
+          <input type="text" id="cj-ce-req" placeholder="ex. Mansour  ou  Dupont, Durand, Martin">
+          <div class="check"><input type="checkbox" id="cj-ce-anon"><label for="cj-ce-anon">Requérant anonyme — remplace par <code>X</code></label></div>
+          <label>Considérant / passage précis <span class="hint">(facultatif)</span></label>
+          <input type="text" id="cj-ce-pass" placeholder="ex. point 12">
+        </div>
+      </div>
+
+      <div class="sect"><div class="sect-title">Publication en revue</div><div id="comm-revue-block"></div></div>
+
+      <div class="actions">
+        <button class="gen" data-gen="comm" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="comm" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="sub-comm">↻ Effacer</button>
+      </div>
+      <p class="err" id="comm-err"></p>
+      <div class="result" id="comm-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="comm-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="comm-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="comm-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== OUVRAGE SIMPLE ===================== -->
+  <div class="tabpane" id="pane-ouvrage">
+    <div class="card" id="sub-ouvrage">
+      <p class="intro">Ouvrage (monographie, traité, manuel, précis…) — règle générale n° 203, cas particuliers n° 205 à 224 du Guide.</p>
+
+      <div class="note-box">
+        <b>Rappel :</b> initiale(s) du prénom + NOM, <i>titre de l'ouvrage</i>, [tome/vol.], [éd.], lieu, maison d'édition, année, p. page.
+        Le lieu et la maison s'écrivent <i>en toutes lettres</i> (pas de « Brux. »).
+      </div>
+
+      <label>Auteur(s) <span class="hint">— dans l'ordre de la page de titre. Cochez « personne morale » pour une institution.</span></label>
+      <div class="authors" id="auth-ouvrage"></div>
+      <button class="btn-add" data-add="auth-ouvrage">+ Ajouter un auteur</button>
+      <div class="check"><input type="checkbox" id="ouvrage-morale"><label for="ouvrage-morale">Auteur = personne morale / institution (nom complet en capitales, sans initiale) — n° 210</label></div>
+
+      <label>Titre de l'ouvrage <span class="hint">(mis en italique — commence par une majuscule)</span></label>
+      <input type="text" id="ouvrage-titre" placeholder="Manuel de la liquidation des sociétés commerciales">
+      <label>Sous-titre <span class="hint">(facultatif — reproduit fidèlement, séparé par « . » à défaut d'autre ponctuation) — n° 211</span></label>
+      <input type="text" id="ouvrage-soustitre" placeholder="Aspects civils, fiscaux, comptables et financiers">
+
+      <div class="sect">
+        <div class="sect-title">Tome / volume / partie <span class="hint" style="text-transform:none">(facultatif) — n° 215-216</span></div>
+        <div class="row">
+          <div><label>Type</label>
+            <select id="ouvrage-tometype">
+              <option value="">(aucun)</option>
+              <option value="t.">t. (tome)</option>
+              <option value="vol.">vol. (volume)</option>
+              <option value="liv.">liv. (livre)</option>
+              <option value="part.">part. (partie)</option>
+              <option value="compl.">compl. (complément)</option>
+              <option value="titre">titre</option>
+              <option value="num">numéro seul (sans mention)</option>
+            </select>
+          </div>
+          <div><label>Numéro <span class="hint">(ex. II, 1, III…)</span></label><input type="text" id="ouvrage-tomenum" placeholder="II"></div>
+          <div><label>Titre du tome/volume <span class="hint">(italique ; ajouté après « : »)</span></label><input type="text" id="ouvrage-tometitre" placeholder="Les obligations"></div>
+        </div>
+        <p class="sub">Plusieurs subdivisions ? Indiquez d'abord le tome, puis répétez au besoin le volume dans le titre du tome (ex. « Les obligations », vol. 2 : …).</p>
+      </div>
+
+      <div class="row">
+        <div><label>Édition <span class="hint">(n° seul — « 1re » jamais citée) — n° 214</span></label><input type="text" id="ouvrage-ed" placeholder="ex. 7"></div>
+        <div><label>Collaboration / mise à jour <span class="hint">(entre parenthèses) — n° 208</span></label><input type="text" id="ouvrage-collab" placeholder="ex. collab. M. DAMBRE  ou  par J.-P. MASSON"></div>
+      </div>
+
+      <div class="sect">
+        <div class="sect-title">Édition (lieu &amp; maison)</div>
+        <p class="sub">Un texte non publié (syllabus, mémoire, thèse, recyclage…) se référence dans l'onglet <b>Autres → Syllabus</b>.</p>
+        <div class="row">
+          <div><label>Lieu(x) d'édition <span class="hint">(toutes lettres ; coédition : séparez par « ; »)</span></label><input type="text" id="ouvrage-lieu" placeholder="Bruxelles  ·  Louvain-la-Neuve; Bruxelles"></div>
+          <div><label>Maison(s) d'édition <span class="hint">(coédition : séparez par « ; », même ordre)</span></label><input type="text" id="ouvrage-maison" placeholder="Larcier  ·  Academia; Bruylant"></div>
+        </div>
+        <div class="row">
+          <div class="check"><input type="checkbox" id="ouvrage-sl"><label for="ouvrage-sl">Lieu manquant → <i>s.l.</i></label></div>
+          <div class="check"><input type="checkbox" id="ouvrage-sd"><label for="ouvrage-sd">Date manquante → <i>s.d.</i></label></div>
+        </div>
+      </div>
+
+      <label>Année <span class="hint">(chiffres arabes ; plage possible : 1949-1975)</span></label>
+      <input type="text" id="ouvrage-annee" placeholder="2013">
+
+      <div class="sect">
+        <div class="sect-title">Localisation de l'extrait — n° 222-224</div>
+        <div class="row">
+          <div><label>Page(s) <span class="hint">(45 · 67 et 68 · 324 à 331)</span></label><input type="text" id="ouvrage-page" placeholder="32"></div>
+          <div><label>spéc. <span class="hint">(page(s) mise(s) en exergue)</span></label><input type="text" id="ouvrage-spec" placeholder="328 et 329"></div>
+          <div><label>N° de paragraphe <span class="hint">(« n° … » après la page)</span></label><input type="text" id="ouvrage-para" placeholder="114"></div>
+        </div>
+        <p class="sub">Pas de « pp. » ni de « nos ». Milliers sans point (« p. 1217 »). « et » pour deux pages, « à » pour une fourchette.</p>
+      </div>
+
+      <div class="actions">
+        <button class="gen" data-gen="ouvrage" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="ouvrage" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="sub-ouvrage">↻ Effacer</button>
+      </div>
+      <p class="err" id="ouvrage-err"></p>
+      <div class="result" id="ouvrage-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="ouvrage-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="ouvrage-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="ouvrage-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+  </div>
+  <!-- ===================== OUVRAGE COLLECTIF ===================== -->
+  <div class="tabpane" id="pane-collectif">
+    <div class="card" id="sub-collectif">
+      <p class="intro">Ouvrage collectif — n° 247 à 268. Un ouvrage réunissant des contributions signées, sous la direction d'un ou plusieurs directeurs.</p>
+
+      <label>Mode de référence</label>
+      <div class="radio-group" id="col-mode">
+        <label class="sel"><input type="radio" name="col-mode" value="contrib" checked> Contribution / article publié dans l'ouvrage</label>
+        <label><input type="radio" name="col-mode" value="ensemble"> Ouvrage collectif dans son intégralité</label>
+      </div>
+      <p class="sub" id="col-mode-sub">La contribution se réfère en note de bas de page ou en bibliographie. L'ouvrage dans son intégralité (n° 249) est réservé à la <b>bibliographie</b>.</p>
+
+      <!-- ===== Auteur(s) de la contribution (mode contrib) ===== -->
+      <div id="col-contrib-auth">
+        <label>Auteur(s) de la contribution <span class="hint">— « X » si anonyme</span></label>
+        <div class="authors" id="auth-collectif"></div>
+        <button class="btn-add" data-add="auth-collectif">+ Ajouter un auteur</button>
+
+        <label>Titre de la contribution <span class="hint">(entre guillemets)</span></label>
+        <input type="text" id="col-titre-contrib" placeholder="La prescription de l'astreinte">
+      </div>
+
+      <!-- ===== Titre de l'ouvrage collectif (les deux modes) ===== -->
+      <label>Titre de l'ouvrage collectif <span class="hint">(mis en italique)</span></label>
+      <input type="text" id="col-titre-ouvrage" placeholder="L'astreinte">
+      <label>Sous-titre de l'ouvrage <span class="hint">(facultatif — n° 258/211)</span></label>
+      <input type="text" id="col-soustitre" placeholder="">
+
+      <!-- ===== Directeur(s) ===== -->
+      <div class="sect">
+        <div class="sect-title">Directeur(s) / coordinateur(s) <span class="hint" style="text-transform:none">— n° 248 (5-6) &amp; 249</span></div>
+        <label>Type de direction</label>
+        <div class="radio-group" id="col-dirtype">
+          <label class="sel"><input type="radio" name="col-dirtype" value="physique" checked> Directeur(s) = personne(s) physique(s)</label>
+          <label><input type="radio" name="col-dirtype" value="morale"> Directeur = personne morale / institution (ex. Commission famille du Barreau de Mons)</label>
+          <label><input type="radio" name="col-dirtype" value="absent"> Directeur non visible — nom et « (dir.) » omis (n° 256)</label>
+        </div>
+        <div id="col-dir-list">
+          <div class="authors" id="dir-collectif"></div>
+          <button class="btn-add" data-add="dir-collectif">+ Ajouter un directeur</button>
+          <p class="sub" id="col-dir-morale-hint" style="display:none">Personne morale : indiquez la dénomination complète dans le champ « Nom » (laissez prénom et particule vides).</p>
+        </div>
+        <p class="sub" id="col-dir-sub">Dans une contribution, le nom du directeur s'écrit en minuscules (sauf l'initiale du prénom et la 1re lettre du nom) : « M. Bodart (dir.) ». Au-delà de trois, « et al. ». Pour l'ouvrage entier, le directeur passe en tête, en capitales.</p>
+      </div>
+
+      <!-- ===== Tome / volume ===== -->
+      <div class="sect">
+        <div class="sect-title">Tome / volume / partie <span class="hint" style="text-transform:none">(facultatif) — n° 260</span></div>
+        <div class="row">
+          <div><label>Type</label>
+            <select id="col-tometype">
+              <option value="">(aucun)</option>
+              <option value="t.">t. (tome)</option>
+              <option value="vol.">vol. (volume)</option>
+              <option value="liv.">liv. (livre)</option>
+              <option value="part.">part. (partie)</option>
+              <option value="num">numéro seul</option>
+            </select>
+          </div>
+          <div><label>Numéro</label><input type="text" id="col-tomenum" placeholder="2"></div>
+          <div><label>Titre du tome <span class="hint">(italique, après « : »)</span></label><input type="text" id="col-tometitre" placeholder=""></div>
+        </div>
+      </div>
+
+      <label>Édition <span class="hint">(n° seul — la 1re n'est jamais citée) — n° 259</span></label>
+      <input type="text" id="col-ed" placeholder="ex. 2">
+
+      <div class="sect">
+        <div class="sect-title">Édition (lieu &amp; maison)</div>
+        <div class="row">
+          <div><label>Lieu(x) d'édition <span class="hint">(toutes lettres ; coédition : « ; »)</span></label><input type="text" id="col-lieu" placeholder="Bruxelles"></div>
+          <div><label>Maison(s) d'édition <span class="hint">(coédition : « ; »)</span></label><input type="text" id="col-maison" placeholder="Larcier"></div>
+        </div>
+        <div class="row">
+          <div class="check"><input type="checkbox" id="col-sl"><label for="col-sl">Lieu manquant → <i>s.l.</i></label></div>
+          <div class="check"><input type="checkbox" id="col-sd"><label for="col-sd">Date manquante → <i>s.d.</i></label></div>
+        </div>
+      </div>
+
+      <label>Année</label>
+      <input type="text" id="col-annee" placeholder="2020">
+
+      <!-- ===== Localisation (mode contrib) ===== -->
+      <div class="sect" id="col-loc">
+        <div class="sect-title">Localisation de l'extrait — n° 266-268</div>
+        <div class="row">
+          <div><label>Page(s) <span class="hint">(34 · 67 et 68 · 324 à 331)</span></label><input type="text" id="col-page" placeholder="34"></div>
+          <div><label>spéc.</label><input type="text" id="col-spec" placeholder=""></div>
+          <div><label>N° de paragraphe</label><input type="text" id="col-para" placeholder=""></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="gen" data-gen="collectif" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="collectif" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="sub-collectif">↻ Effacer</button>
+      </div>
+      <p class="err" id="collectif-err"></p>
+      <div class="result" id="collectif-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="collectif-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="collectif-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="collectif-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+  </div>
+  <!-- ===================== ENCYCLOPÉDIE ===================== -->
+  <div class="tabpane" id="pane-encyclo">
+    <div class="card" id="sub-encyclo">
+      <p class="intro">Encyclopédie — n° 269 à 284 (R.P.D.B., P.B., Novelles, Rép. not., Guide jur. entr.…). La direction, le patronage et le fondateur ne figurent jamais dans la référence (n° 270).</p>
+
+      <label>L'auteur de la contribution est-il indiqué ?</label>
+      <div class="radio-group" id="enc-mode">
+        <label><input type="radio" name="enc-mode" value="anon" checked> Non — verbo anonyme (« v° … »)</label>
+        <label><input type="radio" name="enc-mode" value="auth"> Oui — auteur précisé</label>
+      </div>
+      <p class="sub" id="enc-mode-sub">Verbo anonyme : l'encyclopédie ouvre la référence. Auteur précisé (n° 273) : l'auteur passe en tête, l'encyclopédie glisse après le titre et le préfixe « v° » disparaît.</p>
+
+      <!-- Auteur (mode auth) -->
+      <div id="enc-auth-block" style="display:none">
+        <label>Auteur(s)</label>
+        <div class="authors" id="auth-encyclo"></div>
+        <button class="btn-add" data-add="auth-encyclo">+ Ajouter un auteur</button>
+        <label>Titre de la contribution <span class="hint">(entre guillemets)</span></label>
+        <input type="text" id="enc-titre-auth" placeholder="L'abus de position dominante">
+      </div>
+
+      <!-- Nom de l'encyclopédie -->
+      <label>Encyclopédie <span class="hint">(abréviation, en italique — n° 270)</span></label>
+      <input type="text" id="enc-nom" list="revues-datalist" placeholder="ex. R.P.D.B.  ·  P.B.  ·  Novelles  ·  Rép. not." autocomplete="off">
+      <p class="suggest" id="enc-nom-sug"></p>
+      <div class="check"><input type="checkbox" id="enc-fmob"><label for="enc-fmob">Encyclopédie à feuillets mobiles — ajoute « (f. mob.) » et remplace l'année par la date du feuillet (n° 277)</label></div>
+      <p class="sub">Subdivision sans tome (ex. <i>Les Novelles</i>) : intégrez-la dans le nom (« Novelles. Droit civil ») — n° 278.</p>
+
+      <!-- Verbo (mode anon) -->
+      <div id="enc-verbo-block">
+        <label>Titre (verbo) <span class="hint">(majuscule au 1er mot, lettres droites, précédé de « v° »)</span></label>
+        <input type="text" id="enc-verbo" placeholder="Contrat de travail et contrat d'emploi">
+      </div>
+
+      <!-- Tome / volume -->
+      <div class="sect">
+        <div class="sect-title">Tome / volume / complément <span class="hint" style="text-transform:none">(facultatif) — n° 270 (3)</span></div>
+        <div class="row">
+          <div><label>Type</label>
+            <select id="enc-tometype">
+              <option value="">(aucun)</option>
+              <option value="t.">t. (tome)</option>
+              <option value="compl.">compl. (complément)</option>
+              <option value="liv.">liv. (livre)</option>
+              <option value="vol.">vol. (volume)</option>
+              <option value="titre">titre</option>
+              <option value="num">numéro seul</option>
+            </select>
+          </div>
+          <div><label>Numéro <span class="hint">(ex. III, VIII, LXXXIV…)</span></label><input type="text" id="enc-tomenum" placeholder="III"></div>
+          <div><label>Intitulé du tome <span class="hint">(italique, après « : »)</span></label><input type="text" id="enc-tometitre" placeholder=""></div>
+        </div>
+      </div>
+
+      <label>Édition <span class="hint">(n° seul ; facultatif) — n° 214</span></label>
+      <input type="text" id="enc-ed" placeholder="">
+
+      <div class="row">
+        <div><label>Lieu d'édition</label><input type="text" id="enc-lieu" placeholder="Bruxelles"></div>
+        <div><label>Maison d'édition</label><input type="text" id="enc-maison" placeholder="Bruylant"></div>
+      </div>
+      <div id="enc-annee-wrap">
+        <label>Année</label>
+        <input type="text" id="enc-annee" placeholder="1969">
+      </div>
+      <div id="enc-fmob-date-wrap" style="display:none">
+        <label>Date du feuillet / livret <span class="hint">(feuillets mobiles — date au bas du feuillet, ex. 15 mars 2009 ou juin 1996)</span></label>
+        <input type="text" id="enc-fmob-date" placeholder="15 mars 2009">
+      </div>
+
+      <div class="sect">
+        <div class="sect-title">Localisation — n° 282-284</div>
+        <div class="row">
+          <div><label>Localisation</label><select id="enc-ptype"><option value="p.">p. (page)</option><option value="col.">col. (colonne)</option></select></div>
+          <div><label>Page(s) / colonne <span class="hint">(709 · VIII.2.3-1 · 67 et 68)</span></label><input type="text" id="enc-page" placeholder="709"></div>
+          <div><label>N° de paragraphe <span class="hint">(« n° … »)</span></label><input type="text" id="enc-para" placeholder="754"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="gen" data-gen="encyclo" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="encyclo" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="sub-encyclo">↻ Effacer</button>
+      </div>
+      <p class="err" id="encyclo-err"></p>
+      <div class="result" id="encyclo-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="encyclo-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="encyclo-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="encyclo-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+  </div>
+  <div class="tabpane" id="pane-autres">
+    <div class="subtabs" id="autres-subtabs">
+      <button class="subtab active" data-asub="internet">Internet</button>
+      <button class="subtab" data-asub="syllabus">Syllabus &amp; textes non publiés</button>
+      <button class="subtab" data-asub="journaux">Journaux</button>
+    </div>
+
+    <!-- ===== INTERNET ===== -->
+    <div class="card subpane active" id="asub-internet">
+      <p class="intro">Source uniquement accessible en ligne — n° 295-296. On calque l'article de revue : le nom de la revue et la pagination sont remplacés par « disponible sur » + l'adresse du site.</p>
+      <label>Auteur(s) <span class="hint">— « X » si anonyme</span></label>
+      <div class="authors" id="auth-internet"></div>
+      <button class="btn-add" data-add="auth-internet">+ Ajouter un auteur</button>
+      <label>Titre du texte <span class="hint">(entre guillemets)</span></label>
+      <input type="text" id="net-titre" placeholder="Les commissions de surveillance des prisons : un outil méconnu de soutien aux détenus">
+      <label>Adresse du site <span class="hint">(page d'accueil — « disponible sur … »)</span></label>
+      <input type="text" id="net-site" placeholder="www.justice-en-ligne.be">
+      <div class="row">
+        <div><label>Date de rédaction <span class="hint">(laisser vide si inconnue)</span></label><input type="date" id="net-date"></div>
+        <div><label>Sinon, date de consultation <span class="hint">(→ « s.d., consulté le … »)</span></label><input type="date" id="net-consult"></div>
+      </div>
+      <div class="actions">
+        <button class="gen" data-gen="net" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="net" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="asub-internet">↻ Effacer</button>
+      </div>
+      <p class="err" id="net-err"></p>
+      <div class="result" id="net-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="net-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="net-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="net-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+
+    <!-- ===== SYLLABUS & TEXTES NON PUBLIÉS ===== -->
+    <div class="card subpane" id="asub-syllabus">
+      <p class="intro">Texte non publié — n° 219 : syllabus, mémoire, thèse de doctorat, recyclage, actes de colloque non publiés. On les assimile à un ouvrage ; le statut (lettres droites) et l'université remplacent le lieu et la maison d'édition.</p>
+      <label>Auteur(s)</label>
+      <div class="authors" id="auth-syllabus"></div>
+      <button class="btn-add" data-add="auth-syllabus">+ Ajouter un auteur</button>
+      <label>Titre <span class="hint">(en italique, comme un ouvrage)</span></label>
+      <input type="text" id="syl-titre" placeholder="Fondements romains du droit privé">
+      <label>Sous-titre <span class="hint">(facultatif)</span></label>
+      <input type="text" id="syl-soustitre" placeholder="">
+      <div class="row">
+        <div><label>Statut <span class="hint">(lettres droites, non abrégé)</span></label>
+          <select id="syl-statut">
+            <option value="syllabus">syllabus</option>
+            <option value="mémoire">mémoire</option>
+            <option value="thèse de doctorat">thèse de doctorat</option>
+            <option value="recyclage en droit">recyclage en droit</option>
+            <option value="__autre">Autre (saisie libre)…</option>
+          </select>
+        </div>
+        <div id="syl-statut-libre-wrap" style="display:none"><label>Statut (libre)</label><input type="text" id="syl-statut-libre" placeholder="ex. actes du colloque organisé le … à …"></div>
+      </div>
+      <label>Université / institution</label>
+      <input type="text" id="syl-univ" placeholder="Université Saint-Louis – Bruxelles">
+      <label>Année <span class="hint">(année académique pour un syllabus : 2015-2016 ; sinon année civile)</span></label>
+      <input type="text" id="syl-annee" placeholder="2015-2016">
+      <div class="sect">
+        <div class="sect-title">Localisation</div>
+        <div class="row">
+          <div><label>Page(s) <span class="hint">(29 · 67 et 68 · 12 à 20)</span></label><input type="text" id="syl-page" placeholder="29"></div>
+          <div><label>spéc.</label><input type="text" id="syl-spec" placeholder=""></div>
+          <div><label>N° de paragraphe</label><input type="text" id="syl-para" placeholder=""></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="gen" data-gen="syllabus" data-mode="note">▶ Générer la référence en note de bas de page</button>
+        <button class="gen alt" data-gen="syllabus" data-mode="biblio">▶ Générer la référence en bibliographie</button>
+        <button class="reset" data-reset="asub-syllabus">↻ Effacer</button>
+      </div>
+      <p class="err" id="syllabus-err"></p>
+      <div class="result" id="syllabus-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="syllabus-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="syllabus-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="syllabus-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). Pour les cas de référencement très particuliers, non couverts par l'outil, reportez-vous directement au Guide.</div>
+      </div>
+    </div>
+
+    <!-- ===== JOURNAUX ===== -->
+    <div class="card subpane" id="asub-journaux">
+      <p class="intro">Article de presse (journal) — n° 297. On calque l'article de revue : journaliste, titre, nom du journal en italique, date de parution, page. Cette source n'a pas le statut de doctrine et ne figure pas en bibliographie.</p>
+      <label>Journaliste <span class="hint">— « X » si non signé</span></label>
+      <div class="authors" id="auth-journaux"></div>
+      <button class="btn-add" data-add="auth-journaux">+ Ajouter un journaliste</button>
+      <label>Titre de l'article <span class="hint">(entre guillemets)</span></label>
+      <input type="text" id="jour-titre" placeholder="La réforme du paysage judiciaire">
+      <label>Nom du journal <span class="hint">(en italique)</span></label>
+      <input type="text" id="jour-nom" placeholder="La Libre Belgique">
+      <div class="row">
+        <div><label>Date de parution</label><input type="date" id="jour-date"></div>
+        <div><label>Page</label><input type="text" id="jour-page" placeholder="6"></div>
+      </div>
+      <div class="actions">
+        <button class="gen" data-gen="journaux" data-mode="note">▶ Générer la référence</button>
+        <button class="reset" data-reset="asub-journaux">↻ Effacer</button>
+      </div>
+      <p class="err" id="journaux-err"></p>
+      <div class="result" id="journaux-result">
+        <h3>Référence générée</h3>
+        <div class="ref-out" id="journaux-ref"></div>
+        <div class="btns"><button class="btn-copy" data-copy="journaux-ref">Copier (avec mise en forme)</button><button class="btn-copy" data-copytxt="journaux-ref">Copier (texte simple)</button></div>
+        <div class="warn"><b>⚠ Avertissement :</b> cette application peut commettre des erreurs. Vérifiez toujours la référence proposée à l'aide du <i>Guide des citations, références et abréviations juridiques</i> (Kluwer, 2017). La référence à un journal ne se met pas en bibliographie (n° 297).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<datalist id="revues-datalist"></datalist>
+
+<script>
+/* ===================== DONNÉES REVUES (identiques à l'app Jurisprudence) ===================== */
+const REVUES=[
+["A.F.T.","Algemeen fiscaal tijdschrift"],
+["A.J.D.A.","Actualité juridique. Droit administratif"],
+["A.J.I.L.","American journal of international law"],
+["A.J.T.","Algemeen juridisch tijdschrift"],
+["A.L.D.","Actualité législative Dalloz"],
+["A.M.R.","Algemene modellenverzameling voor de rechtspraktijk"],
+["Act. dr.","Actualités du droit"],
+["Act. dr. fam.","Actualités du droit de la famille"],
+["Act. jur.","Actualités juridiques"],
+["Act. jur. P.I. addit.","Actualité juridique. Propriété immobilière additionnel"],
+["Adm. lex.","Administratief lexicon"],
+["Ann. Cons.","Benelux Annales du Conseil interparlementaire consultatif du Benelux"],
+["Ann. Conv. D.H.","Annuaire de la Convention européenne des droits de l'homme"],
+["Ann. dr.","Annales de droit de Louvain"],
+["Ann. dr. Lg.","Annales de droit de Liège"],
+["Ann. Fac. dr. Lg.","Annales de la Faculté de droit, d'économie et de sciences sociales de"],
+["Ann. fr. dr. intern.","Annuaire français de droit international"],
+["Ann. jur. créd.","Annuaire juridique du crédit"],
+["Ann. jur. créd. règl. coll.","Annuaire juridique du crédit et du règlement collectif de dettes"],
+["Ann. loyers","Annales des loyers"],
+["Ann. not.","Annales du notariat et de l'enregistrement"],
+["Ann. parl.","Annales parlementaires"],
+["Ann. prat. comm.","Annuaire pratique du commerce"],
+["Ann. propr. industr.","Annales de la propriété industrielle, artistique et littéraire"],
+["Ann. écon. publ.","Annales de l'économie publique, sociale et coopérative"],
+["Arch. phil. dr.","Archives de philosophie du droit et de sociologie juridique"],
+["B.F.A.R.","Bulletin de la Fondation André Renard"],
+["B.I.-I.N.A.M.I.","Bulletin d'information de l'I.N.A.M.I."],
+["B.L.","Bulletin législatif belge"],
+["B.R.H.","Belgische rechtspraak in handelszaken"],
+["B.T.I.R.","Belgisch tijdschrift voor internationaal recht"],
+["B.T.S.Z.","Belgisch tijdschrift voor sociale zekerheid"],
+["B.T.W. rev. B.T.W. revue (voy.","Revue de la T.V.A.)"],
+["Bull.","Bulletin des arrêts de la Cour de cassation"],
+["Bull. Acad. R. Sc. O.","Bulletin des séances de l'Académie royale des Sciences d'outre-mer"],
+["Bull. adm. pénit.","Bulletin de l'administration pénitentiaire"],
+["Bull. ass.","Bulletin des assurances"],
+["Bull. Bel.","Bulletin der belastingen"],
+["Bull. civ.","Bulletin des chambres civiles de la Cour de cassation"],
+["Bull. contr.","Bulletin des contributions"],
+["Bull. Créd. comm.","Bulletin du Crédit communal"],
+["Bull. doc. min. Fin.","Bulletin de documentation du ministère des Finances"],
+["Bull. F.E.B.","Bulletin de la Fédération des entreprises de Belgique"],
+["Bull. fisc. fin. r.","Bulletin voor fiscaal en financieel recht"],
+["Bull. gem. secr.","Bulletin van de Nationale Federatie der gemeentesecretarissen van België"],
+["Bull. handelsregl.","Bulletin van de handelsreglementering"],
+["Bull. prov.","Bulletin provincial"],
+["Bull. secr. comm.","Bulletin de la Fédération nationale des secrétaires communaux de Belgique"],
+["Bull. strafinr.","Bulletin van het Bestuur van de strafinrichtingen"],
+["Bull. trim. b. dr. comp.","Bulletin trimestriel belge de droit comparé"],
+["Bull. dr. h.","Bulletin d'information sur les droits de l'homme"],
+["C.A.B.G.","Cahiers Antwerpen Brussel Gent"],
+["C.D.P.K.","Chroniques de droit public"],
+["C.R.A.","Circulation, responsabilité et assurances"],
+["Cah. const.","Cahiers constitutionnels"],
+["Cah. dr. entreprise","Cahiers de droit de l'entreprise"],
+["Cah. dr. europ.","Cahiers de droit européen"],
+["Cah. dr. fam.","Cahiers de droit familial"],
+["Cah. dr. imm.","Cahiers de droit immobilier"],
+["Cah. dr. inf.","Cahiers Lamy du droit de l'informatique"],
+["Cah. dr. jud.","Cahiers de droit judiciaire"],
+["Cah. jur. élec. gaz","Cahiers juridiques de l'électricité et du gaz"],
+["Cah. méd. dettes","Cahiers de la médiation des dettes"],
+["Cah. sc. adm.","Cahiers des sciences administratives"],
+["Chr. D.S.","Chroniques de droit social"],
+["Col. J. Trans. L.","Columbia Journal of Transnational Law"],
+["D.A.","Droit des affaires"],
+["D.C.C.R.","Droit de la consommation / Consumentenrecht"],
+["D.I.T.","Droit de l'informatique et des télécoms"],
+["D.P.C.I.","Droit et pratique du commerce international"],
+["D.Q.M.","Droit en quart-monde"],
+["D.R.","Décisions et rapports de la Commission européenne des droits de l'homme"],
+["D.S.C.","Droit des sociétés commerciales"],
+["Div. act.","Divorce, actualité juridique, sociale & fiscale"],
+["Doc. Min. Fin.","Documentatieblad Ministerie van Financiën"],
+["Dr. circ.","Droit de la circulation Jurisprudence"],
+["Dr. et","Ville Droit et Ville"],
+["Dr. et Rég.","Droit et Région (précédemment Revue régionale de droit)"],
+["Dr. europ. transp.","Droit européen des transports"],
+["Dr. fisc.","Droit fiscal"],
+["Dr. fond.","Droits fondamentaux"],
+["Dr. inform.","Droit de l'informatique"],
+["Dr. marit. franç.","Droit maritime français Droit pénal et procédure pénale Droit pénal et procédure pénale"],
+["Dr. prat. comm. intern.","Droit et pratique du commerce international"],
+["Dr. soc.","Droit social"],
+["E.C.L.R.","European Constitutional Law Review"],
+["E.H.R.L.R.","European Human Rights Law Review"],
+["E.I.P.R.","European Intellectual Property Review"],
+["E.J.I.L.","European Journal of International Law"],
+["E.J.M.L.","European Journal of Migration and Law"],
+["E.L.J.","European Law Journal"],
+["E.L. Rev.","European Law Review"],
+["E.P.C.","Évaluation du préjudice corporel au regard de la jurisprudence"],
+["Entr. et dr.","L'entreprise et le droit"],
+["F. J. F.","Fiscale jurisprudentie/Jurisprudence fiscale"],
+["F. rechtspr.","Fundamentele rechtspraak"],
+["Fare. Act.","Gerechtelijk akkoord & Faillissement. Actualiteit"],
+["fisc.","(chambre) fiscale"],
+["Fisc. act.","Fiscale actualiteit. Nieuwsbrief"],
+["Fisc. as.","Fiscalité de l'assurance"],
+["H.I.L.J.","Harvard International Law Journal"],
+["H.R.L.R","Human Rights Law Review"],
+["Harv. H.R.J.","Harvard Human Rights Journal"],
+["I.J. Const. L.","International Journal of Constitutional Law"],
+["I.R.D.I.","Droits intellectuels Ius Interuniversitair studententijdschrift Ius & actores Ius & actores"],
+["Ing.-Cons.","Revue de droit intellectuel. L'ingénieur- Conseil"],
+["Intern. Fisc. Act.","Internationale Fiscale Actualiteit Nieuwsbrief"],
+["Intertax","Intertax (International tax review)"],
+["J. dr. jeun.","Journal du droit des jeunes"],
+["J.C.B.","Jurisprudence commerciale de Belgique"],
+["J.C.E.","Jurisprudence du Conseil d'État"],
+["J.C.M.S.","Journal of Common Market Studies"],
+["J.D.E.","Journal de droit européen (successeur du Journal des tribunaux - droit européen)"],
+["J.D.F.","Journal de droit fiscal"],
+["J.D.J.","Journal du droit des jeunes"],
+["J.D.S.C.","Recueil annuel de jurisprudence en droit des sociétés commerciales"],
+["J.J.D.","Journal des juristes démocrates"],
+["J.J.P.","Journal des juges de paix"],
+["J.J.Pol.","Journal des juges de police"],
+["J.L.","Jurisprudence de Liège"],
+["J.L.M.B.","Revue de jurisprudence de Liège, Mons et Bruxelles"],
+["J.O.C.E.","Journal officiel des Communautés européennes"],
+["J.O.U.E.","Journal officiel de l'Union européenne"],
+["J.P.A.","Jurisprudence du port d'Anvers"],
+["J.R.I.","Journal de réflexion sur l'informatique"],
+["J.T.","Journal des tribunaux"],
+["J.T.O.","Journal des tribunaux d'outre-mer"],
+["J.T.T.","Journal des tribunaux du travail"],
+["J.W.T.","Journal of world trade"],
+["Journ. dr. intern.","Journal du droit international (Clunet)"],
+["Journ. dr. j.","Journal du droit des jeunes"],
+["Journ. jur.","Journal du juriste"],
+["Journ. prat. dr. fisc. fin.","Journal pratique de droit fiscal et financier"],
+["Journ. proc.","Journal des procès"],
+["Juger","Juger (revue de l'Association syndicale des magistrats) Jura Falc. Jura Falconis"],
+["Jur.","Hainaut Revue de jurisprudence du Hainaut"],
+["Jur. comm. Brux.","Jurisprudence commerciale de"],
+["Jur. comm. Fl.","Jurisprudence commerciale des Flandres"],
+["Jur. dr. soc. B.L.N.","Jurisprudence du droit social Bruxelles- Louvain-Nivelles"],
+["Jur. Niv.","Recueil de la jurisprudence du tribunal de Nivelles"],
+["Jur. trav. Brux.","Jurisprudence des juridictions du travail de Bruxelles"],
+["Kinderrechtengids.","Commentaren - Regelgeving - Rechtspraak - Nuttige informatie"],
+["N.J.W.","Nieuw juridisch weekblad"],
+["N. arbeidsr.","Nieuw arbeidsrecht"],
+["NYU. J. Int'l. L&P.","New York University Journal of International Law and Politics"],
+["Panopticon","Panopticon"],
+["Pas.","Pasicrisie"],
+["R.A.A.C.E.","Recueil des arrêts et avis du Conseil d'État (avant 1972)"],
+["R.A.B.G.","Rechtspraak Antwerpen Brussel Gent"],
+["R.A.C.E.","Recueil des arrêts du Conseil d'État (à partir de 1972)"],
+["R.A.J.B.","Recueil annuel de jurisprudence belge"],
+["R.B.D.C.","Revue belge de droit constitutionnel"],
+["R.B.D.I.","Revue belge de droit international"],
+["R.B.D.I.P.R.-T.I.P.R.","Revue de droit international privé - Tijdschrift voor Internationaal Privaatrecht"],
+["R.C.A.D.I.","Recueil des cours de l'Académie de droit international de La Haye"],
+["R.C.B.","Revue de la concurrence belge"],
+["R.C.D.I.","Revue Copropriété et droit immobilier"],
+["R.C.J.B.","Revue critique de jurisprudence belge"],
+["R.D.C.","Revue de droit commercial belge"],
+["R.D.I.R.","Revue du droit des industries de réseau"],
+["R.D.J.P.","Revue de droit judiciaire et de la preuve"],
+["R.D.S.","Revue de droit social"],
+["R.D.T.I.","Revue du droit des technologies de l'information (anciennement Ubiquité)"],
+["R.D.U.E.","Revue du droit de l'Union européenne"],
+["R.E.C.O.","Revue européenne de droit de la consommation"],
+["R.F.R.L.","Revue de fiscalité régionale et locale"],
+["R.G.A.R.","Revue générale des assurances et des responsabilités"],
+["R.G.C.F.","Revue générale du contentieux fiscal"],
+["R.G.D.C.","Revue générale de droit civil belge"],
+["R.G.F.","Revue générale de fiscalité"],
+["R.H.A.","Rechtspraak der haven van Antwerpen"],
+["R.I.C.","Revue internationale de la concurrence"],
+["R.I.D.C.","Revue internationale de droit comparé"],
+["R.I.D.E.","Revue internationale de droit économique"],
+["R.I.E.J.","Revue interdisciplinaire d'études juridiques"],
+["R.I.S.A.","Revue internationale des sciences administratives"],
+["R.J.D.A.","Recueil de jurisprudence du droit administratif et du Conseil d'État"],
+["R.M.C.","Revue du Marché commun"],
+["R.M.C.U.E.","Revue du Marché commun et de l'Union européenne"],
+["R.P.D.B.","Répertoire pratique du droit belge"],
+["P.B.","Pandectes belges"],
+["Orientations","Orientations. Droit social et gestion du personnel"],
+["Pand. pér.","Pandectes périodiques"],
+["Novelles","Les Novelles"],
+["Rép. not.","Répertoire notarial"],
+["Guide jur. entr.","Guide juridique de l'entreprise"],
+["Guide dr. imm.","Guide de droit immobilier"],
+["A.P.R.","Algemene praktische rechtsverzameling"],
+["R.P.D.B. compl.","Répertoire pratique du droit belge — compléments"],
+["R.R.D.","Revue régionale de droit (devenue Droit et Région)"],
+["R.R.J.","Revue de la recherche juridique. Droit prospectif"],
+["R.S.C.","Revue de science criminelle et de droit pénal comparé"],
+["R.U.D.H.","Revue universelle des droits de l'homme"],
+["R.W.","Rechtskundig Weekblad"],
+["Rec. C.J.U.E.","Recueil de jurisprudence de la Cour de justice de l'Union européenne"],
+["Rec. dr. pén.","Recueil de droit pénal"],
+["Rec. gén. enr. not.","Recueil général de l'enregistrement et du notariat"],
+["Rec. lég. gén.","Recueil de la législation générale en vigueur en Belgique"],
+["Rec. Trib. fonct. publ. UE","Recueil de la jurisprudence du Tribunal de la fonction publique de l'Union européenne"],
+["Rechtsk. T.","Rechtskundig Tijdschrift"],
+["Rechtspr. Arb. Br.","Rechtspraak van de Arbeidsgerechten van Brussel"],
+["Rev. acc. trav.","Revue des accidents du travail et de droit industriel et social"],
+["Rev. adm.","Revue de l'administration et du droit administratif de la Belgique"],
+["Rev. arb.","Revue de l'arbitrage"],
+["Rev. b. dr. const.","Revue belge de droit constitutionnel"],
+["Rev. b. séc. soc.","Revue belge de sécurité sociale"],
+["Rev. banq.","Revue de la banque"],
+["Rev. comm.","La revue communale"],
+["Rev. crit. dr. intern. privé","Revue critique de droit international privé"],
+["Rev. dr. b.","Revue de droit belge"],
+["Rev. dr. commun.","Revue de droit communal"],
+["Rev. dr. contemp.","Revue internationale de droit contemporain (Association internationale des juristes démocrates)"],
+["Rev. dr. fam.","Revue de droit familial"],
+["Rev. dr. h.","Revue des droits de l'homme"],
+["Rev. dr. intern. comp.","Revue de droit international et de droit comparé"],
+["Rev. dr. min.","Revue de droit minier"],
+["Rev. dr. publ.","Revue du droit public et de la science politique"],
+["Rev. dr. pén. crim.","Revue de droit pénal et de criminologie"],
+["Rev. dr. pén. mil.","Revue de droit pénal militaire et de droit de la guerre"],
+["Rev. dr. rur.","Revue de droit rural"],
+["Rev. dr. sanit. et soc.","Revue de droit sanitaire et social"],
+["Rev. dr. santé","Revue de droit de la santé"],
+["Rev. dr. U.L.B.","Revue de droit de l'U.L.B."],
+["Rev. dr. étr.","Revue du droit des étrangers"],
+["Rev. eur. envir.","Revue européenne de l'environnement"],
+["Rev. expert","Revue de l'expert"],
+["Rev. faill.","Revue des faillites, concordats et liquidations"],
+["Rev. fisc.","La revue fiscale"],
+["Rev. fr. dr. admin.","Revue française de droit administratif"],
+["Rev. fr. dr. aérien","Revue française de droit aérien"],
+["Rev. gd.","Revue de la gendarmerie"],
+["Rev. gén. ass. terr.","Revue générale des assurances terrestres"],
+["Rev. gén. dr.","Revue générale de droit"],
+["Rev. gén. dr. internat.","Revue générale de droit international public"],
+["Rev. hist. dr.","Revue d'histoire du droit"],
+["Rev. hist. droit","Revue historique de droit français et étranger"],
+["Rev. Inst. soc.","Revue de l'Institut de sociologie de l'Université libre de Bruxelles"],
+["Rev. jur.","Congo Revue juridique du Congo belge"],
+["Rev. jur. comm.","Revue de jurisprudence commerciale"],
+["Rev. jur. environ.","Revue juridique de l'environnement"],
+["Rev. march. uniq. eur.","Revue du marché unique européen"],
+["Rev. not. belge","Revue du notariat belge"],
+["Rev. prat. not.","Revue pratique du notariat"],
+["Rev. prat. soc.","Revue pratique des sociétés civiles et commerciales"],
+["Rev. rw.","Revue van de rijkswacht"],
+["Rev. sc. crim.","Revue de science criminelle et de droit pénal comparé"],
+["Rev. sc. fin.","Revue de science financière"],
+["Rev. T.V.A.","Revue de la T.V.A."],
+["Rev. trav.","Revue du travail"],
+["Rev. trim. dr. civ.","Revue trimestrielle de droit civil"],
+["Rev. trim. dr. com.","Revue trimestrielle de droit commercial et de droit économique"],
+["Rev. trim. dr. eur.","Revue trimestrielle de droit européen"],
+["Rev. trim. dr. fam.","Revue trimestrielle de droit familial"],
+["Rev. trim. dr. h.","Revue trimestrielle des droits de l'homme"],
+["Rev. Trés.","Revue du Trésor"],
+["Rev. U.L.B.","Revue de l'Université de Bruxelles"],
+["Rev. urb.","Revue juridique et économique de l'urbanisme et de l'environnement"],
+["Rev. dr. ULg.","Revue de la Faculté de droit de l'Université de Liège"],
+["R .D.E.","Revue du droit des étrangers"],
+["Rép. fisc.","Répertoire fiscal"],
+["Soc. kron.","Sociaalrechtelijke kronieken"],
+["social. Droit du travail","Compendium social. Droit du travail"],
+["Stn. J.C.R.C.L.","Stanford Journal of Civil Rights and Civil Liberties"],
+["T. agr. r.","Tijdschrift voor agrarisch recht"],
+["T. ann.","Tijdschrift voor aannemingsrecht"],
+["T. app.","Tijdschrift voor appartements en immorecht"],
+["T. bankw.","Tijdschrift voor het bankwezen"],
+["T. gem.","Tijdschrift voor gemeenterecht"],
+["T. gez.","Tijdschrift voor gezondheidsrecht"],
+["T. mil. strafr.","Tijdschrift voor militair strafrecht en oorlogsrecht"],
+["T. Not.","Tijdschrift voor notarissen"],
+["T. rechtsgesch.","Tijdschrift voor rechtsgeschiedenis"],
+["T. rechtsh.","Tijdschrift voor rechtshulp"],
+["T. soc. wetensch.","Tijdschrift voor sociale wetenschappen"],
+["T. sport.","Tijdschrift voor sportrecht"],
+["T. strafr.","Tijdschrift voor strafrecht. Jurisprudentie, nieuwe wetgeving en doctrine voor de praktijk"],
+["T. vred.","Tijdschrift van de vrede- en politierechters"],
+["T. vreemd.","Tijdschrift voor vreemdelingenrecht"],
+["T. wrr.","Tijdschrift van de werkrechtersraden"],
+["T.A.V.W.","Tijdschrift voor aansprakelijkheid en verzekering in het wegverkeer"],
+["T.B.B.R.","Tijdschrift voor Belgisch burgerlijk recht"],
+["T.B.H.","Tijdschrift voor Belgisch handelsrecht"],
+["T.B.O.","Tijdschrift voor bouwrecht en onroerend goed"],
+["T.B.P.","Tijdschrift voor bestuurswetenschappen en publiekrecht"],
+["T.E.P.","Tijdschrift estate planning"],
+["T.F.R.","Tijdschrift voor fiscaal recht"],
+["T.G.R.","Tijdschrift voor Gentse rechtspraak"],
+["T.G.R./T.W.V.R.","Tijdschrift voor Gentse en West- Vlaamse Rechtspraak"],
+["T.J.K.","Tijdschrift voor jeugdrecht en kinderrechten"],
+["T.M.R.","Tijdschrift voor milieurecht"],
+["T.O.R.B.","Tijdschrift voor onderwijsrecht en onderwijsbeleid"],
+["T.P.R.","Tijdschrift voor privaatrecht"],
+["T.R.D.","Tijdschrift Rechtsdocumentatie"],
+["T.R.O.S.","Tijdschrift voor ruimtelijke ordening en stedenbouw"],
+["T.R.V.","Tijdschrift voor rechtspersonen en vennootschap"],
+["T.S.R.","Tijdschrift voor sociaal recht"],
+["T.V.B.R.","Tijdschrift voor Brugse rechtspraak"],
+["T. Fam.","Tijdschrift voor familierecht"],
+["Trav. Com. ét. et lég. not.","Travaux du Comité d'études et de législation du notariat"],
+["Trav. conf. U.L.B.","Travaux et conférences de la Faculté de Droit de l'Université libre de Bruxelles"],
+["Verkeersrecht","Verkeersrecht Jurisprudentie"],
+["Vl. T. Gez.","Vlaams tijdschrift voor gezondheidsrecht v° verbo (mot-clé d'un répertoire)"],
+["Vr. Ant.","Bulletin van vragen en antwoorden"],
+["Y.H.R.D.L.J.","Yale Human Rights and Development Law Journal"],
+["Yearb. Eur. Conv. Hum. R.","Yearbook of the european Convention on human rights"]
+];
+const ABBR_SET=new Set(REVUES.map(r=>r[0].toLowerCase()));
+const NAME2ABBR={};REVUES.forEach(r=>NAME2ABBR[r[1].toLowerCase()]=r[0]);
+/* index « sans ponctuation » : permet de retrouver l'abréviation même si l'utilisateur
+   ne met pas les points ni les espaces (jlmb, j l m b, rw…) -> l'appli restitue « J.L.M.B. ». */
+const nodots=s=>(s||'').toLowerCase().replace(/[.\s]/g,'');
+const NODOTS2ABBR={};REVUES.forEach(r=>{const k=nodots(r[0]);if(!(k in NODOTS2ABBR))NODOTS2ABBR[k]=r[0];});
+/* datalist reconstructible selon le tri choisi :
+   - 'abbr' : options classées par abréviation (valeur = abréviation, libellé = nom) ;
+   - 'nom'  : options classées par nom complet (valeur = nom complet, libellé = abréviation).
+   La saisie reste résolue dans les deux sens par resolveRevue(). */
+function rebuildRevueDatalist(sort){
+  const dl=document.getElementById('revues-datalist');
+  const coll=new Intl.Collator('fr',{sensitivity:'base'});
+  const list=REVUES.slice();
+  let h='';
+  if(sort==='nom'){
+    list.sort((a,b)=>coll.compare(a[1],b[1]));
+    list.forEach(r=>{h+=`<option value="${r[1]}">${r[0]}</option>`;});
+  }else{
+    list.sort((a,b)=>coll.compare(a[0],b[0]));
+    list.forEach(r=>{h+=`<option value="${r[0]}">${r[1]}</option>`;});
+  }
+  dl.innerHTML=h;
+}
+rebuildRevueDatalist('abbr');
+function resolveRevue(v){
+  v=(v||'').trim();if(!v) return {abbr:'',sug:''};
+  const low=v.toLowerCase();
+  if(ABBR_SET.has(low)){const r=REVUES.find(x=>x[0].toLowerCase()===low);return {abbr:r[0],sug:''};}
+  if(NAME2ABBR[low]) return {abbr:NAME2ABBR[low],sug:'Abréviation : '+NAME2ABBR[low]};
+  // saisie sans points/espaces (jlmb, rw…) -> abréviation officielle avec points
+  const nd=nodots(v);
+  if(nd && NODOTS2ABBR[nd]){const a=NODOTS2ABBR[nd];return {abbr:a,sug: a.toLowerCase()!==low?'Abréviation : '+a:''};}
+  const hit=REVUES.find(x=>x[1].toLowerCase().includes(low)&&low.length>=4);
+  if(hit) return {abbr:hit[0],sug:'Abréviation suggérée : '+hit[0]+' ('+hit[1]+')'};
+  return {abbr:v,sug:'Revue non répertoriée — l\'abréviation saisie sera utilisée telle quelle (nom complet en italique le cas échéant).'};
+}
+
+/* ===================== OUTILS ===================== */
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function val(id){const e=document.getElementById(id);return e?e.value.trim():"";}
+/* met une majuscule à la 1re lettre (titres, sous-titres, intitulés de tome — n° 203, 211, 215) */
+function ucfirst(s){s=(s||'').trim();return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+/* lecture d'un champ « titre » avec majuscule initiale forcée */
+/* retire les guillemets qui ENCADRENT tout l'intitulé (« … », "…", “…”) ;
+   les guillemets placés à l'intérieur de l'intitulé sont conservés */
+function stripEnclosingQuotes(s){
+  s=(s||'').trim();
+  const pairs=[['«','»'],['“','”'],['„','“'],['"','"']];
+  let changed=true;
+  while(changed && s.length>=2){
+    changed=false;
+    for(const [o,c] of pairs){
+      if(s.startsWith(o) && s.endsWith(c)){
+        const inner=s.slice(o.length, s.length-c.length);
+        let ok;
+        if(o===c){ ok=(inner.split(o).length-1)%2===0; } // guillemets droits : nombre pair à l'intérieur
+        else { // le contenu ne doit pas fermer avant d'ouvrir (« A » et « B » reste intact)
+          let depth=0; ok=true;
+          for(const ch of inner){ if(ch===o)depth++; else if(ch===c){ if(depth===0){ok=false;break;} depth--; } }
+        }
+        if(ok){ s=inner.replace(/^[\s  ]+|[\s  ]+$/g,''); changed=true; break; }
+      }
+    }
+  }
+  return s;
+}
+/* intitulé saisi entièrement en capitales -> minuscules avec majuscule au premier mot */
+function fixAllCaps(s){
+  const letters=s.replace(/[^A-Za-zÀ-ÖØ-öø-ÿŒœ]/g,'');
+  if(letters.length>1 && letters===letters.toUpperCase() && letters!==letters.toLowerCase()) return s.toLowerCase();
+  return s;
+}
+function titleVal(id){return ucfirst(fixAllCaps(stripEnclosingQuotes(val(id))));}
+const G_OPEN="« ",G_CLOSE=" »";
+
+/* ===================== BLOC REVUE PARTAGÉ ===================== */
+function buildRevueBlock(prefix){
+  return `
+    <label>Revue <span class="hint">(abréviation ou nom complet — mise en italique)</span></label>
+    <div class="radio-group revuesort" style="margin:0 0 8px">
+      <label class="sel"><input type="radio" name="${prefix}-sort" value="abbr" checked> Liste classée par abréviation</label>
+      <label><input type="radio" name="${prefix}-sort" value="nom"> Liste classée par nom</label>
+    </div>
+    <input type="text" id="${prefix}-revue" list="revues-datalist" placeholder="ex. J.L.M.B.  ou  Journal des tribunaux" autocomplete="off">
+    <p class="suggest" id="${prefix}-revue-sug"></p>
+    <div class="row">
+      <div><label>Année</label><input type="text" id="${prefix}-annee" placeholder="ex. 2024  (ou 2012-2013)"></div>
+      <div><label>Livraison <span class="hint">(fac.)</span></label><input type="text" id="${prefix}-livr" placeholder="ex. 4"></div>
+      <div><label>Format livraison</label><select id="${prefix}-livfmt"><option value="slash">Année/numéro (2024/4)</option><option value="num">Année, n° (2024, n°4)</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>Localisation</label><select id="${prefix}-ptype"><option value="p.">p.</option><option value="col.">col.</option></select></div>
+      <div style="flex:2"><label>Page(s) / colonne <span class="hint">(ex. 45 · 45 et 47 · 45 à 50)</span></label><input type="text" id="${prefix}-page" placeholder="ex. 45"></div>
+    </div>
+  `;
+}
+['article','comm'].forEach(p=>{
+  document.getElementById(p+'-revue-block').innerHTML=buildRevueBlock(p);
+  const inp=document.getElementById(p+'-revue');
+  inp.addEventListener('input',()=>{document.getElementById(p+'-revue-sug').textContent=resolveRevue(inp.value).sug;});
+});
+/* Tri de la liste des revues : synchronise tous les blocs + reconstruit la datalist. */
+function setRevueSort(sort){
+  rebuildRevueDatalist(sort);
+  document.querySelectorAll('.revuesort input[type=radio]').forEach(r=>{
+    r.checked=(r.value===sort);
+    r.closest('label').classList.toggle('sel',r.checked);
+  });
+}
+document.addEventListener('change',e=>{
+  const r=e.target.closest('.revuesort input[type=radio]');
+  if(r) setRevueSort(r.value);
+});
+/* segment revue, année/livraison, page — nom de revue en italique */
+function segRevue(prefix){
+  const {abbr}=resolveRevue(val(prefix+'-revue'));
+  if(!abbr) return {ok:false,html:''};
+  let s=', <em>'+esc(abbr)+'</em>';
+  const annee=val(prefix+'-annee'),livr=val(prefix+'-livr'),fmt=val(prefix+'-livfmt'),ptype=val(prefix+'-ptype'),page=val(prefix+'-page');
+  if(annee){
+    if(livr){ s+=fmt==='num' ? ', '+esc(annee)+', n°'+esc(livr) : ', '+esc(annee)+'/'+esc(livr); }
+    else s+=', '+esc(annee);
+  }
+  if(page) s+=', '+(ptype||'p.')+' '+esc(page);
+  return {ok:true,html:s};
+}
+
+/* ===================== AUTEURS ===================== */
+/* Réduit un prénom (complet ou déjà abrégé) à son/ses initiale(s).
+   Ex. « Alexandre » -> « A. » ; « Jean-Claude » -> « J.-C. » ;
+   « Chr. » ou « J.-C. » (déjà abrégés) -> conservés tels quels. */
+function initials(raw){
+  let s=(raw||'').trim();
+  if(!s) return '';
+  // Déjà sous forme d'initiale(s) (contient un point) : on respecte la saisie.
+  if(/\./.test(s)) return s;
+  // Sépare les composantes du prénom (traits d'union ou espaces) et prend la 1re lettre de chacune.
+  const parts=s.split(/[\s\-]+/).filter(Boolean);
+  return parts.map(p=>p.charAt(0).toUpperCase()+'.').join('-');
+}
+function fmtName(a){
+  let s=initials(a.prenom);
+  let nom=esc(a.nom).toUpperCase();
+  if(a.part){
+    const part=esc(a.part);
+    // particule terminée par une apostrophe (t', O', d'…) : collée au nom, sans espace
+    const glue=/['’]$/.test(part);
+    s+=(s?" ":"")+part+(glue?nom:" "+nom);
+  }else{
+    s+=(s?" ":"")+nom;
+  }
+  return s.trim();
+}
+/* Note de bas de page : initiale(s) + NOM ; au-delà de 3 auteurs -> premier + « et al. » (italique). */
+function joinAuthors(list){
+  if(list.length===0) return "";
+  if(list.length===1) return fmtName(list[0]);
+  if(list.length===2) return fmtName(list[0])+" et "+fmtName(list[1]);
+  if(list.length===3) return fmtName(list[0])+", "+fmtName(list[1])+" et "+fmtName(list[2]);
+  return fmtName(list[0])+" <em>et al.</em>"; // au-delà de trois auteurs
+}
+/* Bibliographie : pour CHAQUE auteur, le NOM précède l'initiale, séparé par une virgule
+   (KERCHOVE, F.) ; la particule reste devant le nom (van de KERCHOVE, M., n° 301) ;
+   tous les auteurs sont mentionnés (jamais de « et al. »), n° 302-305 et 310. */
+function fmtNameBib(a){
+  const ini=initials(a.prenom);
+  let nom=esc(a.nom).toUpperCase();
+  if(a.part){
+    const part=esc(a.part);
+    const glue=/['’]$/.test(part);
+    nom=glue?part+nom:part+' '+nom;
+  }
+  return nom+(ini?', '+ini:'');
+}
+function joinAuthorsBib(list){
+  if(list.length===0) return "";
+  const names=list.map(fmtNameBib);
+  if(names.length===1) return names[0];
+  if(names.length===2) return names[0]+" et "+names[1];
+  // 3+ : virgules puis « et » devant le dernier ; tous les auteurs (pas de « et al. »)
+  return names.slice(0,-1).join(", ")+" et "+names[names.length-1];
+}
+function getAuthors(containerId){
+  const rows=document.querySelectorAll('#'+containerId+' .author-row');const list=[];
+  rows.forEach(r=>{
+    const prenom=r.querySelector('.a-prenom').value.trim();
+    const part=r.querySelector('.a-part').value.trim();
+    const nom=r.querySelector('.a-nom').value.trim();
+    if(nom) list.push({prenom,part,nom});
+  });
+  return list;
+}
+function authorRowHTML(){
+  return '<div class="author-row">'+
+    '<div><span class="mini">Prénom ou initiale(s)</span><input type="text" class="a-prenom" placeholder="A. ou Alexandre"></div>'+
+    '<div style="flex:0 0 120px"><span class="mini">Particule</span><input type="text" class="a-part" placeholder="van, de…"></div>'+
+    '<div><span class="mini">Nom</span><input type="text" class="a-nom" placeholder="COURTENS"></div>'+
+    '<button class="btn-rm" title="Supprimer">×</button>'+
+  '</div>';
+}
+function addAuthor(containerId){document.getElementById(containerId).insertAdjacentHTML('beforeend',authorRowHTML());}
+['auth-article','auth-comm','auth-ouvrage','auth-collectif','dir-collectif','auth-encyclo','auth-internet','auth-syllabus','auth-journaux'].forEach(addAuthor);
+
+/* ===================== ERREUR / SORTIE ===================== */
+function showErr(p,m){const e=document.getElementById(p+'-err');e.textContent=m;e.classList.add('show');document.getElementById(p+'-result').classList.remove('show');}
+function clearErr(p){document.getElementById(p+'-err').classList.remove('show');}
+function output(p,html){const txt=html.replace(/<[^>]+>/g,'');if(!/\.$/.test(txt.trim()))html+='.';document.getElementById(p+'-ref').innerHTML=html;document.getElementById(p+'-result').classList.add('show');}
+
+/* ===================== GÉNÉRATEURS ===================== */
+/* Sélectionne le format d'auteurs selon le mode ('note' ou 'biblio'). */
+function authorsFor(mode,containerId){
+  const list=getAuthors(containerId);
+  return mode==='biblio' ? joinAuthorsBib(list) : joinAuthors(list);
+}
+function genArticle(mode){
+  clearErr('article');
+  const auth=authorsFor(mode,'auth-article');
+  const titre=titleVal('article-titre');
+  const rev=segRevue('article');
+  if(!auth) return showErr('article','Veuillez indiquer au moins un auteur.');
+  if(!titre) return showErr('article','Veuillez indiquer le titre de l\'article.');
+  if(!rev.ok) return showErr('article','Veuillez indiquer la revue.');
+  if(!hasPage('article')) return showErr('article','La page (ou la colonne) est indispensable pour référencer un article de revue.');
+  output('article', auth+', '+G_OPEN+esc(titre)+G_CLOSE+rev.html);
+}
+/* ============ MOTEUR JURISPRUDENCE (repris de l'app Jurisprudence) ============ */
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function dateFR(v){if(!v)return"";const[a,m,j]=v.split("-").map(Number);if(!a||!m||!j)return"";const jour=(j===1)?"1er":String(j);return jour+" "+MOIS[m-1]+" "+a;}
+function yearOf(v){if(!v)return"";return v.split("-")[0];}
+/* Nom d'auteur (M.P., note) : minuscule avec majuscule initiale ; initiales conservées. */
+function fmtAuteur(raw){
+  let s=(raw||'').trim();if(!s)return'';
+  return s.split(/\s+/).map(tok=>{
+    if(/\./.test(tok)) return tok.toUpperCase();
+    if(tok.length<=2 && !/[aeiouyàâäéèêëîïôöûü]/i.test(tok)) return tok.toUpperCase();
+    return tok.split('-').map(w=>w?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():w).join('-');
+  }).join(' ');
+}
+const CHAMBRE_MAP={
+  "chambre":"ch.","chambres":"ch.",
+  "référé":"réf.","référés":"réf.","des référés":"réf.","du référé":"réf.",
+  "saisie":"sais.","saisies":"sais.","des saisies":"sais.","chambre des saisies":"sais.",
+  "jeunesse":"jeun.","de la jeunesse":"jeun.","chambre de la jeunesse":"jeun.",
+  "mises en accusation":"mis. acc.","des mises en accusation":"mis. acc.","chambre des mises en accusation":"mis. acc.",
+  "vacations":"vac.","des vacations":"vac.","chambre des vacations":"vac.",
+  "conseil":"ch. cons.","chambre du conseil":"ch. cons.","du conseil":"ch. cons.",
+  "fiscale":"fisc.","chambre fiscale":"fisc.",
+  "juge d'instruction":"j. instr.","instruction":"j. instr.",
+  "bureau d'assistance judiciaire":"bur. ass. jud.",
+  "assemblée générale":"ass. gén.","ass. générale":"ass. gén."
+};
+function normChambre(raw){
+  let s=(raw||'').trim();if(!s) return {out:'',sug:''};
+  const low=s.toLowerCase().replace(/’/g,"'");
+  if(CHAMBRE_MAP[low]){return {out:CHAMBRE_MAP[low],sug: low!==CHAMBRE_MAP[low]?'Abréviation appliquée : '+CHAMBRE_MAP[low]:''};}
+  let out=s, changed=false;
+  const rules=[
+    [/\bchambre des saisies\b/gi,"sais."],[/\bchambre des mises en accusation\b/gi,"mis. acc."],
+    [/\bchambre de la jeunesse\b/gi,"jeun."],[/\bchambre des vacations\b/gi,"vac."],
+    [/\bchambre du conseil\b/gi,"ch. cons."],[/\bchambre fiscale\b/gi,"fisc."],
+    [/\bréférés?\b/gi,"réf."],[/\bsaisies?\b/gi,"sais."],[/\bmises en accusation\b/gi,"mis. acc."],
+    [/\bvacations?\b/gi,"vac."],[/\bjeunesse\b/gi,"jeun."],[/\bchambres?\b/gi,"ch."]
+  ];
+  rules.forEach(([re,rep])=>{if(re.test(out)){out=out.replace(re,rep);changed=true;}});
+  out=out.replace(/\s+/g,' ').trim();
+  return {out, sug: changed&&out!==s?'Abréviation appliquée : '+out:''};
+}
+function chamberFmt(raw){
+  let r=normChambre(raw);let out=(r.out||'').trim();
+  if(!out) return {html:'',text:'',sug:''};
+  if(/^\d/.test(out) && !/\bch\b|\bch\./i.test(out)) out=out+' ch.';
+  let html=esc(out);
+  html=html.replace(/(\d+)(ère|ème|eme|er|re|e)\b/g,(m,d)=> d+'<sup>'+(d==='1'?'re':'e')+'</sup>');
+  html=html.replace(/(\d+)(?=\s+ch\.)/g,(m,d)=> d+'<sup>'+(d==='1'?'re':'e')+'</sup>');
+  const text=html.replace(/<[^>]+>/g,'');
+  return {html,text,sug: text!==(raw||'').trim()?'Chambre : '+text:''};
+}
+/* Configuration des juridictions de l'ordre judiciaire */
+const OJ={
+  cassation:{abbr:'Cass.',ville:false},
+  appel:{abbr:'',ville:true,cityOnly:true,villeLabel:"Ville de la cour d'appel",villeHint:'Anvers, Bruxelles, Gand, Liège ou Mons'},
+  ctrav:{abbr:'C. trav.',ville:true,villeLabel:'Siège (ville)',villeHint:'Anvers, Bruxelles, Gand, Liège ou Mons',div:true,lang:true},
+  assises:{abbr:'Cour ass.',ville:true,villeLabel:'Province'},
+  civ:{abbr:'Civ.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  corr:{abbr:'Corr.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  tribfam:{abbr:'Trib. fam.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  tribjeun:{abbr:'Trib. jeun.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  tap:{abbr:'T.A.P.',ville:true,villeLabel:'Siège'},
+  tribentr:{abbr:'Trib. entr.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  comm:{abbr:'Comm.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  tribtrav:{abbr:'Trib. trav.',ville:true,div:true,lang:true,villeLabel:'Siège (arrondissement)'},
+  pol:{abbr:'Pol.',ville:true,div:true,lang:true,villeLabel:'Siège'},
+  jp:{abbr:'J.P.',ville:true,cant:true,siege:true,villeLabel:'Canton',villeHint:'ex. Mons ou Audenarde-Kruishoutem'},
+  tribarr:{abbr:'Trib. arr.',ville:true,villeLabel:'Siège'}
+};
+function ojRefresh(){
+  const cfg=OJ[val('cj-oj-type')||document.getElementById('cj-oj-type').value];
+  const show=(id,b)=>document.getElementById(id).classList.toggle('show',!!b);
+  show('cj-oj-ville-f',cfg.ville);show('cj-oj-lang-f',cfg.lang);show('cj-oj-div-f',cfg.div);
+  show('cj-oj-cant-f',cfg.cant);show('cj-oj-siege-f',cfg.siege);
+  if(cfg.ville){document.getElementById('cj-oj-ville-l').innerHTML=(cfg.villeLabel||'Ville / siège')+' <span class="hint">(en toutes lettres)</span>';document.getElementById('cj-oj-ville-sub').textContent=cfg.villeHint||'';}
+}
+/* Bascule OJ / CC / CE dans le sous-onglet Commentaire */
+function commJurisRefresh(){
+  const lv=document.getElementById('comm-juris').value;
+  document.getElementById('cj-oj').style.display=lv==='oj'?'block':'none';
+  document.getElementById('cj-cc').style.display=lv==='cc'?'block':'none';
+  document.getElementById('cj-ce').style.display=lv==='ce'?'block':'none';
+  if(lv==='oj') ojRefresh();
+}
+/* Construit la partie « décision commentée » (juridiction + chambre + date + n°/requérant).
+   Renvoie {ok, html} ; les mentions M.P./somm. sont ajoutées ensuite. */
+function buildDecision(){
+  const lv=document.getElementById('comm-juris').value;
+  if(lv==='oj'){
+    const cfg=OJ[val('cj-oj-type')];
+    const ville=val('cj-oj-ville');const date=dateFR(val('cj-oj-date'));
+    if(!date) return {ok:false,msg:'Veuillez indiquer la date du prononcé.'};
+    if(cfg.cityOnly&&!ville) return {ok:false,msg:"Veuillez indiquer la ville de la cour d'appel."};
+    let base;
+    if(cfg.cityOnly){base=esc(ville);}
+    else{base=cfg.abbr;if(cfg.lang){const lg=val('cj-oj-lang');if(lg)base+=' '+lg;}if(cfg.ville&&ville)base+=' '+esc(ville);}
+    let after='';
+    if(cfg.div){const d=val('cj-oj-div');if(d)after+=', div. '+esc(d);}
+    if(cfg.cant){const c=val('cj-oj-cant');if(c)after+=', '+esc(c);}
+    if(cfg.siege){const sg=val('cj-oj-siege');if(sg){const el=/^[aeiouyàâäéèêëîïôöûü]/i.test(sg)?"d'":"de ";after+=', siège '+el+esc(sg);}}
+    const chf=chamberFmt(val('cj-oj-ch'));const cham=chf.html?' ('+chf.html+')':'';
+    let dec=base+after+cham+', '+esc(date);
+    // Ministère public
+    const nat=val('cj-oj-mp-nat');
+    if(nat){const fct=val('cj-oj-mp-fct'),nom=fmtAuteur(val('cj-oj-mp-nom'));dec+=', '+nat;if(fct)dec+=' '+fct;if(nom)dec+=' '+esc(nom);}
+    if(document.getElementById('cj-oj-somm').checked) dec+=' (somm.)';
+    return {ok:true,html:dec};
+  }
+  if(lv==='cc'){
+    const denom=val('cj-cc-denom');const dv=val('cj-cc-date'),date=dateFR(dv);let num=val('cj-cc-num');
+    if(!date) return {ok:false,msg:"Veuillez indiquer la date de l'arrêt."};
+    if(!num) return {ok:false,msg:"Veuillez indiquer le numéro d'arrêt."};
+    if(!/\//.test(num)){const y=yearOf(dv);if(y)num=num+'/'+y;}
+    let dec=denom+', '+esc(date)+', n°'+esc(num);
+    const pass=val('cj-cc-pass');if(pass)dec+=', '+esc(pass);
+    return {ok:true,html:dec};
+  }
+  // Conseil d'État
+  const date=dateFR(val('cj-ce-date'));let num=val('cj-ce-num');
+  if(!date) return {ok:false,msg:"Veuillez indiquer la date de l'arrêt."};
+  if(!num) return {ok:false,msg:"Veuillez indiquer le numéro d'arrêt."};
+  num=num.replace(/\s/g,'');
+  if(/^\d+$/.test(num)&&num.length>3) num=num.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  let dec='C.E.';
+  const chf=chamberFmt(val('cj-ce-ch'));if(chf.html)dec+=' ('+chf.html+')';
+  dec+=', '+esc(date)+', n°'+esc(num);
+  let req='';
+  if(document.getElementById('cj-ce-anon').checked){req='X';}
+  else{const raw=val('cj-ce-req');if(raw){const noms=raw.split(',').map(s=>fmtAuteur(s.trim())).filter(Boolean);if(noms.length===1)req=noms[0];else if(noms.length<=3)req=noms.join(' et ');else req=noms[0]+' et crts.';}}
+  if(req)dec+=', '+esc(req);
+  const pass=val('cj-ce-pass');if(pass)dec+=', '+esc(pass);
+  return {ok:true,html:dec};
+}
+
+function genComm(mode){
+  clearErr('comm');
+  const auth=authorsFor(mode,'auth-comm');
+  const titre=titleVal('comm-titre');
+  const type=val('comm-type');
+  const dec=buildDecision();
+  const rev=segRevue('comm');
+  if(!auth) return showErr('comm','Veuillez indiquer au moins un auteur (ou « X »).');
+  if(!dec.ok) return showErr('comm',dec.msg);
+  if(!rev.ok) return showErr('comm','Veuillez indiquer la revue.');
+  if(!hasPage('comm')) return showErr('comm','La page (ou la colonne) est indispensable pour référencer un commentaire de décision.');
+  let s=auth+', ';
+  if(titre) s+=G_OPEN+esc(titre)+G_CLOSE+', ';
+  s+=type+' '+dec.html+rev.html;
+  output('comm',s);
+}
+/* ===================== OUVRAGE SIMPLE ===================== */
+/* numéro d'édition -> « Ne éd. » avec exposant (1 -> 1re) */
+function editionSeg(n){
+  n=(n||'').trim().replace(/[^0-9]/g,'');
+  if(!n||n==='1') return ''; // la 1re édition n'est jamais mentionnée
+  return ', '+n+'<sup>e</sup> éd.';
+}
+/* segment localisation partagé : page(s), spéc., n° de paragraphe */
+function pageSeg(prefix){
+  let s='';
+  const page=val(prefix+'-page'),spec=val(prefix+'-spec'),para=val(prefix+'-para');
+  if(page) s+=', p. '+esc(page);
+  if(spec) s+=', spéc. p. '+esc(spec);
+  if(para) s+=', n°'+esc(para);
+  return s;
+}
+/* La page (ou colonne) est-elle indiquée ? (champ « <prefix>-page »). */
+function hasPage(prefix){return !!val(prefix+'-page');}
+function genOuvrage(mode){
+  clearErr('ouvrage');
+  const morale=document.getElementById('ouvrage-morale').checked;
+  // Auteur(s)
+  let auth;
+  if(morale){
+    // personne morale : nom complet en capitales, sans initiale (identique en note et en biblio)
+    const rows=getAuthors('auth-ouvrage');
+    if(!rows.length) return showErr('ouvrage','Veuillez indiquer le nom de la personne morale (champ Nom).');
+    auth=rows.map(a=>esc((a.prenom?a.prenom+' ':'')+(a.part?a.part+' ':'')+a.nom).toUpperCase().replace(/\s+/g,' ').trim()).join(' et ');
+  }else{
+    auth=authorsFor(mode,'auth-ouvrage');
+  }
+  if(!auth) return showErr('ouvrage','Veuillez indiquer au moins un auteur.');
+
+  // Titre (+ sous-titre) en italique
+  let titre=titleVal('ouvrage-titre');
+  if(!titre) return showErr('ouvrage','Veuillez indiquer le titre de l\'ouvrage.');
+  const st=titleVal('ouvrage-soustitre');
+  let titreFull=titre;
+  if(st){ titreFull+=(/[.?!:;]$/.test(titre)?' ':'. ')+st; }
+  let ref=auth+', <em>'+esc(titreFull)+'</em>';
+
+  // Tome / volume / partie (+ titre du tome en italique après « : »)
+  const tt=val('ouvrage-tometype'),tn=val('ouvrage-tomenum'),ttit=titleVal('ouvrage-tometitre');
+  if(tn){
+    if(tt==='num'||tt===''){ ref+=', '+esc(tn); }
+    else if(tt==='titre'){ ref+=', titre '+esc(tn); }
+    else { ref+=', '+tt+' '+esc(tn); }
+    if(ttit) ref+=' : <em>'+esc(ttit)+'</em>';
+  }
+
+  // Édition + éventuelle collaboration/mise à jour (entre parenthèses)
+  ref+=editionSeg(val('ouvrage-ed'));
+  const collab=val('ouvrage-collab');
+  if(collab) ref+=' ('+esc(collab)+')';
+
+  // Lieu(x) — coédition séparée par « ; » -> reliés par « et »
+  let lieu;
+  if(document.getElementById('ouvrage-sl').checked){ lieu='<em>s.l.</em>'; }
+  else{ lieu=val('ouvrage-lieu').split(';').map(x=>esc(x.trim())).filter(Boolean).join(' et '); }
+  if(lieu) ref+=', '+lieu;
+  // Maison(s)
+  const maison=val('ouvrage-maison').split(';').map(x=>esc(x.trim())).filter(Boolean).join(' et ');
+  if(maison) ref+=', '+maison;
+
+  // Année (ou s.d.)
+  if(document.getElementById('ouvrage-sd').checked){
+    ref+=', <em>s.d.</em>';
+  }else{
+    const annee=val('ouvrage-annee');
+    if(annee) ref+=', '+esc(annee);
+  }
+
+  // Localisation — indispensable en note de bas de page ; en bibliographie, la page n'est pas mentionnée
+  if(mode!=='biblio'){
+    if(!hasPage('ouvrage')) return showErr('ouvrage','La page est indispensable pour une référence en note de bas de page.');
+    ref+=pageSeg('ouvrage');
+  }
+  output('ouvrage',ref);
+}
+
+/* ===================== OUVRAGE COLLECTIF ===================== */
+/* met une chaîne en « minuscules sauf la 1re lettre de chaque mot » (nom de directeur
+   dans une contribution, n° 248) — les traits d'union et apostrophes sont respectés. */
+function titleCase(s){
+  return (s||'').toLowerCase().replace(/([a-zàâäéèêëîïôöûüç])([a-zàâäéèêëîïôöûüç'’-]*)/g,
+    (m,f,r)=>f.toUpperCase()+r).replace(/(^|[\s'’-])([a-zàâäéèêëîïôöûüç])/g,(m,sep,c)=>sep+c.toUpperCase());
+}
+/* nom d'un directeur dans une CONTRIBUTION : initiale(s) prénom + Nom (min. sauf 1re lettre) */
+function fmtDirContrib(a){
+  const ini=initials(a.prenom);
+  let nom=titleCase(a.nom);
+  if(a.part){const part=a.part.trim();const glue=/['’]$/.test(part);nom=glue?part+nom:part+' '+nom;}
+  return (ini?ini+' ':'')+nom;
+}
+function joinDirContrib(list){
+  if(!list.length) return '';
+  const n=list.map(fmtDirContrib);
+  if(n.length===1) return n[0];
+  if(n.length===2) return n[0]+' et '+n[1];
+  if(n.length===3) return n[0]+', '+n[1]+' et '+n[2];
+  return n[0]+' <em>et al.</em>'; // plus de trois directeurs
+}
+function genCollectif(mode){
+  clearErr('collectif');
+  const kind=document.querySelector('input[name=col-mode]:checked').value;
+  const dirType=document.querySelector('input[name=col-dirtype]:checked').value;
+  const morale=dirType==='morale';
+  const dirAbsent=dirType==='absent';
+  const dirs=getAuthors('dir-collectif');
+
+  // Titre de l'ouvrage (+ sous-titre) en italique
+  let titreOuv=titleVal('col-titre-ouvrage');
+  if(!titreOuv) return showErr('collectif','Veuillez indiquer le titre de l\'ouvrage collectif.');
+  const stO=titleVal('col-soustitre');
+  let titreOuvFull=titreOuv;
+  if(stO) titreOuvFull+=(/[.?!:;]$/.test(titreOuv)?' ':'. ')+stO;
+
+  // Segment tome + édition + lieu/maison + année (commun)
+  function tail(){
+    let s='';
+    const tt=val('col-tometype'),tn=val('col-tomenum'),ttit=titleVal('col-tometitre');
+    if(tn){ if(tt==='num'||tt===''){s+=', '+esc(tn);} else {s+=', '+tt+' '+esc(tn);} if(ttit)s+=' : <em>'+esc(ttit)+'</em>'; }
+    s+=editionSeg(val('col-ed'));
+    let lieu=document.getElementById('col-sl').checked?'<em>s.l.</em>':val('col-lieu').split(';').map(x=>esc(x.trim())).filter(Boolean).join(' et ');
+    if(lieu) s+=', '+lieu;
+    const maison=val('col-maison').split(';').map(x=>esc(x.trim())).filter(Boolean).join(' et ');
+    if(maison) s+=', '+maison;
+    if(document.getElementById('col-sd').checked) s+=', <em>s.d.</em>';
+    else { const a=val('col-annee'); if(a) s+=', '+esc(a); }
+    return s;
+  }
+
+  if(kind==='ensemble'){
+    // n° 249 : ouvrage dans son intégralité — RÉSERVÉ À LA BIBLIOGRAPHIE
+    if(mode!=='biblio'){
+      return showErr('collectif','L\'ouvrage dans son intégralité se référence uniquement en bibliographie. Utilisez le bouton « bibliographie » (ou choisissez le mode « contribution »).');
+    }
+    // directeurs en tête, en capitales (comme des auteurs), suivis de « (dir.) » ; pas de page
+    let dirHead;
+    if(dirAbsent){ dirHead='X'; }
+    else if(morale){
+      if(!dirs.length) return showErr('collectif','Veuillez indiquer le nom du directeur (personne morale).');
+      dirHead=dirs.map(a=>esc((a.prenom?a.prenom+' ':'')+(a.part?a.part+' ':'')+a.nom).toUpperCase().replace(/\s+/g,' ').trim()).join(' et ')+' (dir.)';
+    } else {
+      if(!dirs.length) return showErr('collectif','Veuillez indiquer au moins un directeur (ou cochez « directeur non visible »).');
+      dirHead=joinAuthorsBib(dirs)+' (dir.)';   // biblio : NOM, I. …
+    }
+    output('collectif', dirHead+', <em>'+esc(titreOuvFull)+'</em>'+tail());
+    return;
+  }
+
+  // --- Contribution particulière (note ou biblio) ---
+  const auth=authorsFor(mode,'auth-collectif');
+  const titreC=titleVal('col-titre-contrib');
+  if(!auth) return showErr('collectif','Veuillez indiquer au moins un auteur de la contribution.');
+  if(!titreC) return showErr('collectif','Veuillez indiquer le titre de la contribution.');
+
+  // Directeur (min. sauf 1re lettre) + (dir.) ; ou omis si absent
+  let dirSeg='';
+  if(!dirAbsent){
+    let d;
+    if(morale){
+      if(!dirs.length) return showErr('collectif','Veuillez indiquer le nom du directeur (personne morale).');
+      d=dirs.map(a=>((a.prenom?a.prenom+' ':'')+(a.part?a.part+' ':'')+a.nom).replace(/\s+/g,' ').trim()).map(esc).join(' et ');
+    } else {
+      if(!dirs.length) return showErr('collectif','Veuillez indiquer au moins un directeur (ou cochez « directeur non visible »).');
+      d=joinDirContrib(dirs);
+    }
+    dirSeg=', '+d+' (dir.)';
+  }
+
+  // la page est indispensable pour une contribution (note ET bibliographie)
+  if(!hasPage('col')) return showErr('collectif','La page est indispensable pour référencer une contribution à un ouvrage collectif.');
+  let s=auth+', '+G_OPEN+esc(titreC)+G_CLOSE+', <em>'+esc(titreOuvFull)+'</em>'+dirSeg+tail();
+  s+=pageSeg('col');
+  output('collectif',s);
+}
+
+/* ===================== ENCYCLOPÉDIE ===================== */
+function genEncyclo(mode){
+  clearErr('encyclo');
+  const kind=document.querySelector('input[name=enc-mode]:checked').value;
+  // nom de l'encyclopédie -> abréviation (italique), + (f. mob.)
+  const {abbr}=resolveRevue(val('enc-nom'));
+  if(!abbr) return showErr('encyclo','Veuillez indiquer le nom (abrégé) de l\'encyclopédie.');
+  let encName='<em>'+esc(abbr)+'</em>';
+  if(document.getElementById('enc-fmob').checked) encName+=' (f. mob.)';
+
+  // la page (ou colonne) est indispensable en note de bas de page ; en bibliographie, elle n'est pas mentionnée
+  if(mode!=='biblio' && !hasPage('enc')) return showErr('encyclo','La page (ou la colonne) est indispensable pour une référence en note de bas de page.');
+
+  // segment commun : tome, édition, lieu, maison, année [, localisation sauf en bibliographie]
+  function tail(){
+    let s='';
+    const tt=val('enc-tometype'),tn=val('enc-tomenum'),ttit=titleVal('enc-tometitre');
+    if(tn){
+      if(tt==='num'||tt===''){s+=', '+esc(tn);}
+      else if(tt==='titre'){s+=', titre '+esc(tn);}
+      else {s+=', '+tt+' '+esc(tn);}
+      if(ttit)s+=' : <em>'+esc(ttit)+'</em>';
+    }
+    s+=editionSeg(val('enc-ed'));
+    const lieu=val('enc-lieu'); if(lieu)s+=', '+esc(lieu);
+    const maison=val('enc-maison'); if(maison)s+=', '+esc(maison);
+    // feuillets mobiles : date précise du feuillet ; sinon année de publication
+    const fmob=document.getElementById('enc-fmob').checked;
+    const dat=fmob ? val('enc-fmob-date') : val('enc-annee');
+    if(dat)s+=', '+esc(dat);
+    // localisation — omise en bibliographie
+    if(mode!=='biblio'){
+      const ptype=val('enc-ptype'),page=val('enc-page'),para=val('enc-para');
+      if(page)s+=', '+(ptype||'p.')+' '+esc(page);
+      if(para)s+=', n°'+esc(para);
+    }
+    return s;
+  }
+
+  let ref;
+  if(kind==='auth'){
+    // n° 273 : auteur en tête, titre entre guillemets, encyclopédie APRÈS le titre, sans « v° »
+    const auth=authorsFor(mode,'auth-encyclo');
+    const titre=titleVal('enc-titre-auth');
+    if(!auth) return showErr('encyclo','Veuillez indiquer au moins un auteur.');
+    if(!titre) return showErr('encyclo','Veuillez indiquer le titre de la contribution.');
+    ref=auth+', '+G_OPEN+esc(titre)+G_CLOSE+', '+encName+tail();
+  }else{
+    // n° 270 : verbo anonyme -> ABBR, v° Titre, …
+    const verbo=titleVal('enc-verbo');
+    if(!verbo) return showErr('encyclo','Veuillez indiquer le titre (verbo).');
+    ref=encName+', <em>v°</em> '+esc(verbo)+tail();
+  }
+  output('encyclo',ref);
+}
+
+/* ===================== AUTRES : INTERNET (n° 295-296) ===================== */
+function genNet(mode){
+  clearErr('net');
+  const auth=authorsFor(mode,'auth-internet');
+  const titre=titleVal('net-titre');
+  const site=val('net-site');
+  if(!auth) return showErr('net','Veuillez indiquer au moins un auteur (ou « X »).');
+  if(!titre) return showErr('net','Veuillez indiquer le titre du texte.');
+  if(!site) return showErr('net','Veuillez indiquer l\'adresse du site.');
+  let s=auth+', '+G_OPEN+esc(titre)+G_CLOSE+', disponible sur '+esc(site);
+  const d=val('net-date');
+  if(d){ s+=', '+esc(dateFR(d)); }
+  else { const c=val('net-consult'); s+=', <em>s.d.</em>'+(c?', consulté le '+esc(dateFR(c)):''); }
+  output('net',s);
+}
+
+/* ===================== AUTRES : SYLLABUS & TEXTES NON PUBLIÉS (n° 219) ===================== */
+function genSyllabus(mode){
+  clearErr('syllabus');
+  const auth=authorsFor(mode,'auth-syllabus');
+  let titre=titleVal('syl-titre');
+  if(!auth) return showErr('syllabus','Veuillez indiquer au moins un auteur.');
+  if(!titre) return showErr('syllabus','Veuillez indiquer le titre.');
+  const st=titleVal('syl-soustitre');
+  if(st) titre+=(/[.?!:;]$/.test(titre)?' ':'. ')+st;
+  let statut=val('syl-statut'); if(statut==='__autre') statut=val('syl-statut-libre');
+  const univ=val('syl-univ'), annee=val('syl-annee');
+  // assimilé à un ouvrage : titre en italique, statut (lettres droites) + université à la place du lieu/maison
+  let s=auth+', <em>'+esc(titre)+'</em>';
+  if(statut) s+=', '+esc(statut);
+  if(univ) s+=', '+esc(univ);
+  if(annee) s+=', '+esc(annee);
+  // la page est indispensable en note de bas de page ; en bibliographie, elle n'est pas mentionnée
+  if(mode!=='biblio'){
+    if(!hasPage('syl')) return showErr('syllabus','La page est indispensable pour une référence en note de bas de page.');
+    s+=pageSeg('syl');
+  }
+  output('syllabus',s);
+}
+
+/* ===================== AUTRES : JOURNAUX (n° 297) ===================== */
+function genJournaux(mode){
+  clearErr('journaux');
+  // pas de bibliographie pour un journal (n° 297) — le bouton biblio est absent, mais on protège
+  const auth=authorsFor('note','auth-journaux');
+  const titre=titleVal('jour-titre');
+  const nom=val('jour-nom');
+  const date=dateFR(val('jour-date'));
+  if(!auth) return showErr('journaux','Veuillez indiquer le journaliste (ou « X »).');
+  if(!titre) return showErr('journaux','Veuillez indiquer le titre de l\'article.');
+  if(!nom) return showErr('journaux','Veuillez indiquer le nom du journal.');
+  if(!date) return showErr('journaux','Veuillez indiquer la date de parution.');
+  if(!hasPage('jour')) return showErr('journaux','La page est indispensable pour référencer un article de journal.');
+  let s=auth+', '+G_OPEN+esc(titre)+G_CLOSE+', <em>'+esc(nom)+'</em>, '+esc(date);
+  const page=val('jour-page'); s+=', p. '+esc(page);
+  output('journaux',s);
+}
+
+/* ===================== NAVIGATION ===================== */
+document.querySelectorAll('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+  document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane-'+t.dataset.tab).classList.add('active');
+}));
+document.getElementById('revue-subtabs').addEventListener('click',e=>{
+  const b=e.target.closest('.subtab');if(!b)return;
+  document.querySelectorAll('#revue-subtabs .subtab').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  document.querySelectorAll('#pane-revue > .subpane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('sub-'+b.dataset.sub).classList.add('active');
+});
+document.getElementById('autres-subtabs').addEventListener('click',e=>{
+  const b=e.target.closest('.subtab');if(!b)return;
+  document.querySelectorAll('#autres-subtabs .subtab').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  document.querySelectorAll('#pane-autres > .subpane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('asub-'+b.dataset.asub).classList.add('active');
+});
+
+/* ouvrage : bascule publié / non publié */
+/* commentaire : moteur jurisprudence */
+document.getElementById('comm-juris').addEventListener('change',commJurisRefresh);
+document.getElementById('cj-oj-type').addEventListener('change',ojRefresh);
+document.getElementById('cj-oj-ch').addEventListener('input',function(){document.getElementById('cj-oj-ch-sug').textContent=chamberFmt(this.value).sug;});
+document.getElementById('cj-ce-ch').addEventListener('input',function(){document.getElementById('cj-ce-ch-sug').textContent=chamberFmt(this.value).sug;});
+commJurisRefresh();
+/* ouvrage collectif : bascule contribution / ouvrage entier */
+function colModeRefresh(){
+  const kind=document.querySelector('input[name=col-mode]:checked').value;
+  const contrib=kind==='contrib';
+  document.getElementById('col-contrib-auth').style.display=contrib?'block':'none';
+  document.getElementById('col-loc').style.display=contrib?'block':'none';
+  document.querySelectorAll('#col-mode label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+}
+document.querySelectorAll('input[name=col-mode]').forEach(r=>r.addEventListener('change',colModeRefresh));
+colModeRefresh();
+/* ouvrage collectif : type de direction (physique / morale / non visible) */
+function colDirRefresh(){
+  const t=document.querySelector('input[name=col-dirtype]:checked').value;
+  document.getElementById('col-dir-list').style.display=t==='absent'?'none':'block';
+  document.getElementById('col-dir-morale-hint').style.display=t==='morale'?'block':'none';
+  document.querySelectorAll('#col-dirtype label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+}
+document.querySelectorAll('input[name=col-dirtype]').forEach(r=>r.addEventListener('change',colDirRefresh));
+colDirRefresh();
+/* encyclopédie : bascule verbo anonyme / auteur précisé + suggestion d'abréviation */
+function encModeRefresh(){
+  const auth=document.querySelector('input[name=enc-mode]:checked').value==='auth';
+  document.getElementById('enc-auth-block').style.display=auth?'block':'none';
+  document.getElementById('enc-verbo-block').style.display=auth?'none':'block';
+  document.querySelectorAll('#enc-mode label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+}
+document.querySelectorAll('input[name=enc-mode]').forEach(r=>r.addEventListener('change',encModeRefresh));
+document.getElementById('enc-nom').addEventListener('input',function(){document.getElementById('enc-nom-sug').textContent=resolveRevue(this.value).sug;});
+/* encyclopédie : feuillets mobiles -> champ « date du feuillet » à la place de l'année */
+function encFmobRefresh(){
+  const on=document.getElementById('enc-fmob').checked;
+  document.getElementById('enc-annee-wrap').style.display=on?'none':'block';
+  document.getElementById('enc-fmob-date-wrap').style.display=on?'block':'none';
+}
+document.getElementById('enc-fmob').addEventListener('change',encFmobRefresh);
+encModeRefresh();
+/* syllabus : statut « autre » -> champ libre */
+document.getElementById('syl-statut').addEventListener('change',function(){
+  document.getElementById('syl-statut-libre-wrap').style.display=this.value==='__autre'?'block':'none';
+});
+
+/* ===================== BOUTONS ===================== */
+document.addEventListener('click',e=>{
+  const add=e.target.closest('[data-add]'); if(add){addAuthor(add.dataset.add);return;}
+  const rm=e.target.closest('.btn-rm'); if(rm){
+    const c=rm.closest('.authors');
+    if(c.querySelectorAll('.author-row').length>1) rm.closest('.author-row').remove();
+    else rm.closest('.author-row').querySelectorAll('input').forEach(i=>i.value='');
+    return;
+  }
+  const gen=e.target.closest('[data-gen]'); if(gen){({article:genArticle,comm:genComm,ouvrage:genOuvrage,collectif:genCollectif,encyclo:genEncyclo,net:genNet,syllabus:genSyllabus,journaux:genJournaux})[gen.dataset.gen](gen.dataset.mode||'note');return;}
+  const rs=e.target.closest('[data-reset]'); if(rs){resetPane(rs.dataset.reset);return;}
+});
+function resetPane(id){
+  const pane=document.getElementById(id);
+  pane.querySelectorAll('input[type=text],input[type=date]').forEach(i=>i.value='');
+  pane.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+  pane.querySelectorAll('.suggest').forEach(s=>s.textContent='');
+  pane.querySelectorAll('.result').forEach(r=>r.classList.remove('show'));
+  pane.querySelectorAll('.err').forEach(er=>er.classList.remove('show'));
+  pane.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+  pane.querySelectorAll('.authors').forEach(cont=>{cont.innerHTML='';addAuthor(cont.id);});
+  const cj=pane.querySelector('#comm-juris'); if(cj){commJurisRefresh();}
+  const cm=pane.querySelector('input[name=col-mode][value=contrib]'); if(cm){cm.checked=true;colModeRefresh();}
+  const cd=pane.querySelector('input[name=col-dirtype][value=physique]'); if(cd){cd.checked=true;colDirRefresh();}
+  const em=pane.querySelector('input[name=enc-mode][value=anon]'); if(em){em.checked=true;encModeRefresh();}
+  const ef=pane.querySelector('#enc-fmob'); if(ef){encFmobRefresh();}
+  const sl=pane.querySelector('#syl-statut-libre-wrap'); if(sl){sl.style.display='none';}
+}
+
+/* ===================== COPIE ===================== */
+document.querySelectorAll('#tabs')&&document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-copy],[data-copytxt]'); if(!b) return;
+  const id=b.dataset.copy||b.dataset.copytxt;const el=document.getElementById(id);
+  try{
+    if(b.dataset.copy && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([el.innerHTML],{type:'text/html'}),'text/plain':new Blob([el.textContent],{type:'text/plain'})})]);
+    }else{ await navigator.clipboard.writeText(el.textContent); }
+    flash(b);
+  }catch(_){
+    try{await navigator.clipboard.writeText(el.textContent);flash(b);}catch(__){alert('Copie impossible dans ce navigateur.');}
+  }
+});
+function flash(b){const t=b.textContent;b.textContent='✓ Copié !';b.classList.add('done');setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1500);}
+</script>
+</body>
+</html>
