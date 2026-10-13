@@ -389,10 +389,17 @@
       <!-- ===== Directeur(s) ===== -->
       <div class="sect">
         <div class="sect-title">Directeur(s) / coordinateur(s) <span class="hint" style="text-transform:none">— n° 248 (5-6) &amp; 249</span></div>
-        <div class="authors" id="dir-collectif"></div>
-        <button class="btn-add" data-add="dir-collectif">+ Ajouter un directeur</button>
-        <div class="check"><input type="checkbox" id="col-dir-morale"><label for="col-dir-morale">Directeur = personne morale / institution (ex. Commission famille du Barreau de Mons)</label></div>
-        <div class="check"><input type="checkbox" id="col-dir-absent"><label for="col-dir-absent">Directeur non visible — omettre le nom et « (dir.) » (n° 256)</label></div>
+        <label>Type de direction</label>
+        <div class="radio-group" id="col-dirtype">
+          <label class="sel"><input type="radio" name="col-dirtype" value="physique" checked> Directeur(s) = personne(s) physique(s)</label>
+          <label><input type="radio" name="col-dirtype" value="morale"> Directeur = personne morale / institution (ex. Commission famille du Barreau de Mons)</label>
+          <label><input type="radio" name="col-dirtype" value="absent"> Directeur non visible — nom et « (dir.) » omis (n° 256)</label>
+        </div>
+        <div id="col-dir-list">
+          <div class="authors" id="dir-collectif"></div>
+          <button class="btn-add" data-add="dir-collectif">+ Ajouter un directeur</button>
+          <p class="sub" id="col-dir-morale-hint" style="display:none">Personne morale : indiquez la dénomination complète dans le champ « Nom » (laissez prénom et particule vides).</p>
+        </div>
         <p class="sub" id="col-dir-sub">Dans une contribution, le nom du directeur s'écrit en minuscules (sauf l'initiale du prénom et la 1re lettre du nom) : « M. Bodart (dir.) ». Au-delà de trois, « et al. ». Pour l'ouvrage entier, le directeur passe en tête, en capitales.</p>
       </div>
 
@@ -848,6 +855,7 @@ const REVUES=[
 ["R.M.C.U.E.","Revue du Marché commun et de l'Union européenne"],
 ["R.P.D.B.","Répertoire pratique du droit belge"],
 ["P.B.","Pandectes belges"],
+["Orientations","Orientations. Droit social et gestion du personnel"],
 ["Pand. pér.","Pandectes périodiques"],
 ["Novelles","Les Novelles"],
 ["Rép. not.","Répertoire notarial"],
@@ -1016,7 +1024,36 @@ function val(id){const e=document.getElementById(id);return e?e.value.trim():"";
 /* met une majuscule à la 1re lettre (titres, sous-titres, intitulés de tome — n° 203, 211, 215) */
 function ucfirst(s){s=(s||'').trim();return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
 /* lecture d'un champ « titre » avec majuscule initiale forcée */
-function titleVal(id){return ucfirst(val(id));}
+/* retire les guillemets qui ENCADRENT tout l'intitulé (« … », "…", “…”) ;
+   les guillemets placés à l'intérieur de l'intitulé sont conservés */
+function stripEnclosingQuotes(s){
+  s=(s||'').trim();
+  const pairs=[['«','»'],['“','”'],['„','“'],['"','"']];
+  let changed=true;
+  while(changed && s.length>=2){
+    changed=false;
+    for(const [o,c] of pairs){
+      if(s.startsWith(o) && s.endsWith(c)){
+        const inner=s.slice(o.length, s.length-c.length);
+        let ok;
+        if(o===c){ ok=(inner.split(o).length-1)%2===0; } // guillemets droits : nombre pair à l'intérieur
+        else { // le contenu ne doit pas fermer avant d'ouvrir (« A » et « B » reste intact)
+          let depth=0; ok=true;
+          for(const ch of inner){ if(ch===o)depth++; else if(ch===c){ if(depth===0){ok=false;break;} depth--; } }
+        }
+        if(ok){ s=inner.replace(/^[\s  ]+|[\s  ]+$/g,''); changed=true; break; }
+      }
+    }
+  }
+  return s;
+}
+/* intitulé saisi entièrement en capitales -> minuscules avec majuscule au premier mot */
+function fixAllCaps(s){
+  const letters=s.replace(/[^A-Za-zÀ-ÖØ-öø-ÿŒœ]/g,'');
+  if(letters.length>1 && letters===letters.toUpperCase() && letters!==letters.toLowerCase()) return s.toLowerCase();
+  return s;
+}
+function titleVal(id){return ucfirst(fixAllCaps(stripEnclosingQuotes(val(id))));}
 const G_OPEN="« ",G_CLOSE=" »";
 
 /* ===================== BLOC REVUE PARTAGÉ ===================== */
@@ -1425,8 +1462,9 @@ function joinDirContrib(list){
 function genCollectif(mode){
   clearErr('collectif');
   const kind=document.querySelector('input[name=col-mode]:checked').value;
-  const morale=document.getElementById('col-dir-morale').checked;
-  const dirAbsent=document.getElementById('col-dir-absent').checked;
+  const dirType=document.querySelector('input[name=col-dirtype]:checked').value;
+  const morale=dirType==='morale';
+  const dirAbsent=dirType==='absent';
   const dirs=getAuthors('dir-collectif');
 
   // Titre de l'ouvrage (+ sous-titre) en italique
@@ -1647,6 +1685,15 @@ function colModeRefresh(){
 }
 document.querySelectorAll('input[name=col-mode]').forEach(r=>r.addEventListener('change',colModeRefresh));
 colModeRefresh();
+/* ouvrage collectif : type de direction (physique / morale / non visible) */
+function colDirRefresh(){
+  const t=document.querySelector('input[name=col-dirtype]:checked').value;
+  document.getElementById('col-dir-list').style.display=t==='absent'?'none':'block';
+  document.getElementById('col-dir-morale-hint').style.display=t==='morale'?'block':'none';
+  document.querySelectorAll('#col-dirtype label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+}
+document.querySelectorAll('input[name=col-dirtype]').forEach(r=>r.addEventListener('change',colDirRefresh));
+colDirRefresh();
 /* encyclopédie : bascule verbo anonyme / auteur précisé + suggestion d'abréviation */
 function encModeRefresh(){
   const auth=document.querySelector('input[name=enc-mode]:checked').value==='auth';
@@ -1692,6 +1739,7 @@ function resetPane(id){
   pane.querySelectorAll('.authors').forEach(cont=>{cont.innerHTML='';addAuthor(cont.id);});
   const cj=pane.querySelector('#comm-juris'); if(cj){commJurisRefresh();}
   const cm=pane.querySelector('input[name=col-mode][value=contrib]'); if(cm){cm.checked=true;colModeRefresh();}
+  const cd=pane.querySelector('input[name=col-dirtype][value=physique]'); if(cd){cd.checked=true;colDirRefresh();}
   const em=pane.querySelector('input[name=enc-mode][value=anon]'); if(em){em.checked=true;encModeRefresh();}
   const ef=pane.querySelector('#enc-fmob'); if(ef){encFmobRefresh();}
   const sl=pane.querySelector('#syl-statut-libre-wrap'); if(sl){sl.style.display='none';}
