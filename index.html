@@ -1181,10 +1181,37 @@ function fixAllCaps(s){
 }
 /* lieu / maison d'édition : majuscule à la 1re lettre ;
    exception : la maison « la Charte », écrite ainsi dans le Guide (n° 203) */
+function isAllCaps(s){
+  const l=(s||'').replace(/[^A-Za-zÀ-ÖØ-öø-ÿŒœ]/g,'');
+  return l.length>1 && l===l.toUpperCase() && l!==l.toLowerCase();
+}
+/* texte en minuscules (statut, adresse internet, date en lettres) : capitales -> minuscules */
+function lowerIfCaps(s){s=(s||'').trim();return isAllCaps(s)?s.toLowerCase():s;}
+/* nom propre (lieu, maison, université, ville, journal) saisi en capitales :
+   majuscule à chaque mot, petits mots de liaison en minuscules (« Louvain-la-Neuve », « De Boeck et Larcier ») */
+const SMALLW=new Set(['de','du','des','la','le','les','l','d','et','en','sur','sous','aux','au','à','a','van','der','den','het','en','of','the','and','am','im']);
+function properCase(s){
+  s=(s||'').trim();
+  if(!isAllCaps(s)) return s;
+  let i=0;
+  return s.toLowerCase().replace(/[a-zà-öø-ÿœ]+/g,(w,off,str)=>{
+    const first=(i++===0);
+    const prev=str.charAt(off-1);
+    if(!first && SMALLW.has(w) && prev!=='–') return w;
+    return w.charAt(0).toUpperCase()+w.slice(1);
+  });
+}
+/* chiffres romains (tome, volume…) toujours en capitales : « ii » -> « II » */
+function fmtCollab(s){
+  s=(s||'').trim(); if(!s) return s;
+  const m=s.match(/^(collab\.|par)\s+(.*)$/i);
+  return m ? m[1].toLowerCase()+' '+m[2].toUpperCase().replace(/(^|[\s\-])([A-ZÀ-ÖØ-Þ])\.?(?=[\s\-]|$)/g,(x)=>x) : s;
+}
+function romanFix(s){s=(s||'').trim();return /^[ivxlcdm]+$/i.test(s)?s.toUpperCase():s;}
 function pubName(s){
   s=(s||'').trim();
   if(/^la charte$/i.test(s)) return 'la Charte';
-  return ucfirst(s);
+  return ucfirst(properCase(s));
 }
 /* liste « ; » (coédition) -> noms normalisés reliés par « et » */
 function pubList(id){return val(id).split(';').map(x=>esc(pubName(x))).filter(Boolean).join(' et ');}
@@ -1251,7 +1278,7 @@ function initials(raw){
   let s=(raw||'').trim();
   if(!s) return '';
   // Déjà sous forme d'initiale(s) (contient un point) : on respecte la saisie.
-  if(/\./.test(s)) return s;
+  if(/\./.test(s)) return s.split(/([\s\-])/).map(seg=>seg.replace(/^([a-zà-öø-ÿ])([a-zà-öø-ÿ]*)/i,(m,f,r)=>f.toUpperCase()+r.toLowerCase())).join('');
   // Sépare les composantes du prénom (traits d'union ou espaces) et prend la 1re lettre de chacune.
   const parts=s.split(/[\s\-]+/).filter(Boolean);
   return parts.map(p=>p.charAt(0).toUpperCase()+'.').join('-');
@@ -1432,17 +1459,17 @@ function buildDecision(){
   const lv=document.getElementById('comm-juris').value;
   if(lv==='oj'){
     const cfg=OJ[val('cj-oj-type')];
-    const ville=val('cj-oj-ville');const date=dateFR(val('cj-oj-date'));
+    const ville=properCase(val('cj-oj-ville'));const date=dateFR(val('cj-oj-date'));
     if(!date) return {ok:false,msg:'Veuillez indiquer la date du prononcé.'};
     if(cfg.cityOnly&&!ville) return {ok:false,msg:"Veuillez indiquer la ville de la cour d'appel."};
     let base;
     if(cfg.cityOnly){base=esc(ville);}
     else{base=cfg.abbr;if(cfg.lang){const lg=val('cj-oj-lang');if(lg)base+=' '+lg;}if(cfg.ville&&ville)base+=' '+esc(ville);}
     let after='';
-    if(cfg.div){const d=val('cj-oj-div');if(d)after+=', div. '+esc(d);}
-    if(cfg.cant){const c=val('cj-oj-cant');if(c)after+=', '+esc(c);}
-    if(cfg.siege){const sg=val('cj-oj-siege');if(sg){const el=/^[aeiouyàâäéèêëîïôöûü]/i.test(sg)?"d'":"de ";after+=', siège '+el+esc(sg);}}
-    const chf=chamberFmt(val('cj-oj-ch'));const cham=chf.html?' ('+chf.html+')':'';
+    if(cfg.div){const d=properCase(val('cj-oj-div'));if(d)after+=', div. '+esc(d);}
+    if(cfg.cant){const c=lowerIfCaps(val('cj-oj-cant'));if(c)after+=', '+esc(c);}
+    if(cfg.siege){const sg=properCase(val('cj-oj-siege'));if(sg){const el=/^[aeiouyàâäéèêëîïôöûü]/i.test(sg)?"d'":"de ";after+=', siège '+el+esc(sg);}}
+    const chf=chamberFmt(lowerIfCaps(val('cj-oj-ch')));const cham=chf.html?' ('+chf.html+')':'';
     let dec=base+after+cham+', '+esc(date);
     // Ministère public
     const nat=val('cj-oj-mp-nat');
@@ -1466,7 +1493,7 @@ function buildDecision(){
   num=num.replace(/\s/g,'');
   if(/^\d+$/.test(num)&&num.length>3) num=num.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   let dec='C.E.';
-  const chf=chamberFmt(val('cj-ce-ch'));if(chf.html)dec+=' ('+chf.html+')';
+  const chf=chamberFmt(lowerIfCaps(val('cj-ce-ch')));if(chf.html)dec+=' ('+chf.html+')';
   dec+=', '+esc(date)+', n°'+esc(num);
   let req='';
   if(document.getElementById('cj-ce-anon').checked){req='X';}
@@ -1534,7 +1561,7 @@ function genOuvrage(mode){
   let ref=auth+', <em>'+esc(titreFull)+'</em>';
 
   // Tome / volume / partie (+ titre du tome en italique après « : »)
-  const tt=val('ouvrage-tometype'),tn=val('ouvrage-tomenum'),ttit=titleVal('ouvrage-tometitre');
+  const tt=val('ouvrage-tometype'),tn=romanFix(val('ouvrage-tomenum')),ttit=titleVal('ouvrage-tometitre');
   if(tn){
     if(tt==='num'||tt===''){ ref+=', '+esc(tn); }
     else if(tt==='titre'){ ref+=', titre '+esc(tn); }
@@ -1544,7 +1571,7 @@ function genOuvrage(mode){
 
   // Édition + éventuelle collaboration/mise à jour (entre parenthèses)
   ref+=editionSeg(val('ouvrage-ed'));
-  const collab=val('ouvrage-collab');
+  const collab=fmtCollab(val('ouvrage-collab'));
   if(collab) ref+=' ('+esc(collab)+')';
 
   // Lieu(x) — coédition séparée par « ; » -> reliés par « et »
@@ -1612,7 +1639,7 @@ function genCollectif(mode){
   // Segment tome + édition + lieu/maison + année (commun)
   function tail(){
     let s='';
-    const tt=val('col-tometype'),tn=val('col-tomenum'),ttit=titleVal('col-tometitre');
+    const tt=val('col-tometype'),tn=romanFix(val('col-tomenum')),ttit=titleVal('col-tometitre');
     if(tn){ if(tt==='num'||tt===''){s+=', '+esc(tn);} else {s+=', '+tt+' '+esc(tn);} if(ttit)s+=' : <em>'+esc(ttit)+'</em>'; }
     s+=editionSeg(val('col-ed'));
     let lieu=document.getElementById('col-sl').checked?'<em>s.l.</em>':pubList('col-lieu');
@@ -1655,7 +1682,7 @@ function genCollectif(mode){
     let d;
     if(morale){
       if(!dirs.length) return showErr('collectif','Veuillez indiquer le nom du directeur (personne morale).');
-      d=dirs.map(a=>((a.prenom?a.prenom+' ':'')+(a.part?a.part+' ':'')+a.nom).replace(/\s+/g,' ').trim()).map(esc).join(' et ');
+      d=dirs.map(a=>properCase(((a.prenom?a.prenom+' ':'')+(a.part?a.part+' ':'')+a.nom).replace(/\s+/g,' ').trim())).map(esc).join(' et ');
     } else {
       if(!dirs.length) return showErr('collectif','Veuillez indiquer au moins un directeur (ou cochez « directeur non visible »).');
       d=joinDirContrib(dirs);
@@ -1686,7 +1713,7 @@ function genEncyclo(mode){
   // segment commun : tome, édition, lieu, maison, année [, localisation sauf en bibliographie]
   function tail(){
     let s='';
-    const tt=val('enc-tometype'),tn=val('enc-tomenum'),ttit=titleVal('enc-tometitre');
+    const tt=val('enc-tometype'),tn=romanFix(val('enc-tomenum')),ttit=titleVal('enc-tometitre');
     if(tn){
       if(tt==='num'||tt===''){s+=', '+esc(tn);}
       else if(tt==='titre'){s+=', titre '+esc(tn);}
@@ -1698,7 +1725,7 @@ function genEncyclo(mode){
     const maison=pubList('enc-maison'); if(maison)s+=', '+maison;
     // feuillets mobiles : date précise du feuillet ; sinon année de publication
     const fmob=document.getElementById('enc-fmob').checked;
-    const dat=fmob ? val('enc-fmob-date') : val('enc-annee');
+    const dat=fmob ? lowerIfCaps(val('enc-fmob-date')) : val('enc-annee');
     if(dat)s+=', '+esc(dat);
     // localisation — omise en bibliographie
     if(mode!=='biblio'){
@@ -1731,7 +1758,7 @@ function genNet(mode){
   clearErr('net');
   const auth=authorsFor(mode,'auth-internet');
   const titre=titleVal('net-titre');
-  const site=val('net-site');
+  const site=lowerIfCaps(val('net-site'));
   if(!auth) return showErr('net','Veuillez indiquer au moins un auteur (ou « X »).');
   if(!titre) return showErr('net','Veuillez indiquer le titre du texte.');
   if(!site) return showErr('net','Veuillez indiquer l\'adresse du site.');
@@ -1751,8 +1778,8 @@ function genSyllabus(mode){
   if(!titre) return showErr('syllabus','Veuillez indiquer le titre.');
   const st=titleVal('syl-soustitre');
   if(st) titre+=(/[.?!:;]$/.test(titre)?' ':'. ')+st;
-  let statut=val('syl-statut'); if(statut==='__autre') statut=val('syl-statut-libre');
-  const univ=val('syl-univ'), annee=val('syl-annee');
+  let statut=val('syl-statut'); if(statut==='__autre') statut=lowerIfCaps(val('syl-statut-libre'));
+  const univ=properCase(val('syl-univ')), annee=val('syl-annee');
   // assimilé à un ouvrage : titre en italique, statut (lettres droites) + université à la place du lieu/maison
   let s=auth+', <em>'+esc(titre)+'</em>';
   if(statut) s+=', '+esc(statut);
@@ -1772,7 +1799,7 @@ function genJournaux(mode){
   // pas de bibliographie pour un journal (n° 297) — le bouton biblio est absent, mais on protège
   const auth=authorsFor('note','auth-journaux');
   const titre=titleVal('jour-titre');
-  const nom=val('jour-nom');
+  const nom=properCase(val('jour-nom'));
   const date=dateFR(val('jour-date'));
   if(!auth) return showErr('journaux','Veuillez indiquer le journaliste (ou « X »).');
   if(!titre) return showErr('journaux','Veuillez indiquer le titre de l\'article.');
